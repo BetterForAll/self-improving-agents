@@ -1,0 +1,9 @@
+{
+  "parent": 3,
+  "valid": false,
+  "score": 66.3,
+  "files_changed": [],
+  "error": "[Errno 11001] getaddrinfo failed",
+  "gen_id": 4,
+  "timestamp": "2026-04-04 19:49:24"
+}

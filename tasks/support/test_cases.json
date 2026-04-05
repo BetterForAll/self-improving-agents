@@ -1,0 +1,42 @@
+[
+  {
+    "question": "How much does it cost?",
+    "expected": "Personal is $9/month or $89/year, Pro is $29/month or $290/year, Enterprise is $79/month per seat with annual billing only."
+  },
+  {
+    "question": "Can I try it for free?",
+    "expected": "Yes, there is a 14-day free trial on any plan, no credit card required."
+  },
+  {
+    "question": "Does it work on my iPhone?",
+    "expected": "Yes, CloudSync Pro supports iOS along with Windows, Mac, Linux, Android, and web browsers."
+  },
+  {
+    "question": "I want to cancel, can I get a refund?",
+    "expected": "You can cancel anytime. Within the first 30 days you get a prorated refund. After 30 days there is no refund but you keep access until the end of your billing period."
+  },
+  {
+    "question": "How much storage do I get on the Pro plan?",
+    "expected": "The Pro plan includes 500GB of storage."
+  },
+  {
+    "question": "What happens if two people edit the same file?",
+    "expected": "The newest edit wins and the older version is automatically saved to version history so nothing is lost."
+  },
+  {
+    "question": "Can I access my files without internet?",
+    "expected": "Yes, files marked as available offline can be accessed without an internet connection."
+  },
+  {
+    "question": "Is my data encrypted?",
+    "expected": "Yes, CloudSync Pro uses end-to-end encryption with AES-256."
+  },
+  {
+    "question": "How fast is your support response?",
+    "expected": "It depends on your plan: Personal gets email within 24 hours, Pro gets email and chat within 4 hours, Enterprise gets email, chat, phone, and a dedicated account manager."
+  },
+  {
+    "question": "Can I upload a 15GB video file?",
+    "expected": "Large files over 10GB are supported on Pro and Enterprise plans only. If you are on Personal, you would need to upgrade."
+  }
+]

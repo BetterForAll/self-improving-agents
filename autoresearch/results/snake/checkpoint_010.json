@@ -1,0 +1,78 @@
+{
+  "step": 10,
+  "run_id": "run_20260404_193746",
+  "best_metric": 14.55,
+  "baseline_metric": null,
+  "history": [
+    {
+      "step": 1,
+      "action": "ACCEPTED",
+      "proposed_metric": 12.05,
+      "previous_metric": 0.05,
+      "improvement": "24000.0% better"
+    },
+    {
+      "step": 2,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 5.6,
+      "previous_metric": 12.05
+    },
+    {
+      "step": 3,
+      "action": "ACCEPTED",
+      "proposed_metric": 14.55,
+      "previous_metric": 12.05,
+      "improvement": "20.7% better"
+    },
+    {
+      "step": 4,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.55,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 5,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.55,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 6,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.15,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 7,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.15,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 8,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.15,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 9,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.15,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 10,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 0.0,
+      "previous_metric": 14.55
+    }
+  ]
+}

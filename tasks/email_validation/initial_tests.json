@@ -1,0 +1,22 @@
+[
+  {"email": "user@example.com", "valid": true, "reason": "standard email"},
+  {"email": "alice.bob@company.org", "valid": true, "reason": "dots in local part"},
+  {"email": "test@sub.domain.co.uk", "valid": true, "reason": "multi-level domain"},
+  {"email": "user+tag@gmail.com", "valid": true, "reason": "plus addressing"},
+  {"email": "name@123.123.123.123", "valid": true, "reason": "IP domain"},
+  {"email": "", "valid": false, "reason": "empty string"},
+  {"email": "not-an-email", "valid": false, "reason": "no @ sign"},
+  {"email": "@nodomain.com", "valid": false, "reason": "no local part"},
+  {"email": "user@", "valid": false, "reason": "no domain"},
+  {"email": "user @example.com", "valid": false, "reason": "space in local part"},
+  {"email": "user@@example.com", "valid": false, "reason": "double @"},
+  {"email": "user@.com", "valid": false, "reason": "domain starts with dot"},
+  {"email": "user@example..com", "valid": false, "reason": "consecutive dots in domain"},
+  {"email": ".user@example.com", "valid": false, "reason": "local part starts with dot"},
+  {"email": "user.@example.com", "valid": false, "reason": "local part ends with dot"},
+  {"email": "user@example.c", "valid": false, "reason": "TLD too short"},
+  {"email": "user@-example.com", "valid": false, "reason": "domain starts with hyphen"},
+  {"email": "a@b.cc", "valid": true, "reason": "minimal valid email"},
+  {"email": "very.long.email.address@very.long.domain.example.com", "valid": true, "reason": "long but valid"},
+  {"email": "user@example.com\n", "valid": false, "reason": "trailing newline"}
+]

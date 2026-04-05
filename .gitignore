@@ -1,0 +1,6 @@
+.env
+__pycache__/
+*.pyc
+solution*.py
+sokolsky_step_logs.json
+*/agent_code/

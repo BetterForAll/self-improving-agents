@@ -1,0 +1,163 @@
+{
+  "status": "completed",
+  "run_id": "run_20260404_193746",
+  "started_at": "2026-04-04 19:50:58",
+  "completed_at": "2026-04-04 19:50:58",
+  "elapsed_seconds": 786.0,
+  "task": "snake",
+  "metric_name": "score",
+  "higher_is_better": true,
+  "baseline_metric": 0.05,
+  "best_metric": 27.5,
+  "iterations": 12,
+  "generations": 4,
+  "accepted": 4,
+  "rejected": 8,
+  "errors": 0,
+  "valid_generations": 4,
+  "code_modifications": 4,
+  "last_valid_gen": 4,
+  "generation_log": [
+    {
+      "parent": 0,
+      "valid": true,
+      "score": 14.9,
+      "files_changed": [
+        "task_agent.py"
+      ],
+      "error": null,
+      "gen_id": 1,
+      "timestamp": "2026-04-04 19:40:24"
+    },
+    {
+      "parent": 1,
+      "valid": true,
+      "score": 14.9,
+      "files_changed": [
+        "task_agent.py"
+      ],
+      "error": null,
+      "gen_id": 2,
+      "timestamp": "2026-04-04 19:43:54"
+    },
+    {
+      "parent": 2,
+      "valid": true,
+      "score": 27.2,
+      "files_changed": [
+        "task_agent.py"
+      ],
+      "error": null,
+      "gen_id": 3,
+      "timestamp": "2026-04-04 19:46:59"
+    },
+    {
+      "parent": 3,
+      "valid": true,
+      "score": 27.5,
+      "files_changed": [
+        "task_agent.py"
+      ],
+      "error": null,
+      "gen_id": 4,
+      "timestamp": "2026-04-04 19:50:58"
+    }
+  ],
+  "history": [
+    {
+      "type": "task_step",
+      "step": 1,
+      "action": "ACCEPTED",
+      "proposed_metric": 8.85,
+      "previous_metric": 0.05,
+      "improvement_pct": 17600.0
+    },
+    {
+      "type": "task_step",
+      "step": 2,
+      "action": "ACCEPTED",
+      "proposed_metric": 14.9,
+      "previous_metric": 8.85,
+      "improvement_pct": 68.4
+    },
+    {
+      "type": "task_step",
+      "step": 3,
+      "action": "REJECTED",
+      "proposed_metric": 13.7,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 4,
+      "action": "REJECTED",
+      "proposed_metric": 14.9,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 5,
+      "action": "REJECTED",
+      "proposed_metric": 13.7,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 6,
+      "action": "REJECTED",
+      "proposed_metric": 14.05,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 7,
+      "action": "REJECTED",
+      "proposed_metric": 14.45,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 8,
+      "action": "ACCEPTED",
+      "proposed_metric": 27.2,
+      "previous_metric": 14.9,
+      "improvement_pct": 82.6
+    },
+    {
+      "type": "task_step",
+      "step": 9,
+      "action": "REJECTED",
+      "proposed_metric": 27.2,
+      "previous_metric": 27.2
+    },
+    {
+      "type": "task_step",
+      "step": 10,
+      "action": "REJECTED",
+      "proposed_metric": 27.2,
+      "previous_metric": 27.2
+    },
+    {
+      "type": "task_step",
+      "step": 11,
+      "action": "ACCEPTED",
+      "proposed_metric": 27.5,
+      "previous_metric": 27.2,
+      "improvement_pct": 1.1
+    },
+    {
+      "type": "task_step",
+      "step": 12,
+      "action": "REJECTED",
+      "proposed_metric": 27.5,
+      "previous_metric": 27.5
+    }
+  ],
+  "token_usage": {
+    "prompt_tokens": 32292,
+    "completion_tokens": 35979,
+    "total_tokens": 204719,
+    "calls": 16
+  },
+  "estimated_cost_usd": 0.0996
+}

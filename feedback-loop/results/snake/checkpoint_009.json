@@ -1,0 +1,134 @@
+{
+  "step": 9,
+  "run_id": "run_20260404_193746",
+  "best_metric": 31.1,
+  "baseline_metric": null,
+  "history": [
+    {
+      "step": 1,
+      "action": "ACCEPTED",
+      "proposed_metric": 20.15,
+      "previous_metric": 0.05,
+      "improvement": "40200.0% better",
+      "feedback": {
+        "issue_type": "ok",
+        "severity": "ok",
+        "fix_suggestion": "",
+        "confidence": 1.0,
+        "pattern_detected": null
+      }
+    },
+    {
+      "step": 2,
+      "action": "ACCEPTED",
+      "proposed_metric": 28.1,
+      "previous_metric": 20.15,
+      "improvement": "39.5% better",
+      "feedback": {
+        "issue_type": "performance",
+        "severity": "major",
+        "fix_suggestion": "The proposed code introduces a Breadth-First Search (BFS) algorithm to find paths to food or the tail. While this strategy is conceptually more robust for complex snake movements, the provided metric (28.100) is significantly worse than the current best (20.150). This indicates a performance regression, likely due to the increased computational overhead of running BFS multiple times per move, compared to the current O(1) single-step lookahead. Consider reverting to the previous simpler logic or optimizing the BFS implementation significantly if this strategic approach is deemed crucial. If you wish to pursue a pathfinding approach, profile the BFS function to identify bottlenecks and ensure its performance does not degrade the overall metric.",
+        "confidence": 1.0,
+        "pattern_detected": null
+      }
+    },
+    {
+      "step": 3,
+      "action": "REJECTED",
+      "reason": "1773.3% worse than current best",
+      "proposed_metric": 1.5,
+      "previous_metric": 28.1,
+      "feedback": {
+        "issue_type": "correctness",
+        "severity": "critical",
+        "fix_suggestion": "The proposed code introduces a critical bug in the `get_path_bfs` function that will prevent correct pathfinding for vertical moves. In the line calculating `next_r, next_c`:\n\n`next_r, next_c = r + dr, head_c + dc if direction_name in [\"UP\", \"DOWN\"] else c + dc`\n\nWhen `direction_name` is \"UP\" or \"DOWN\", `dr` will be -1 or 1, and `dc` will be 0. The `next_c` is incorrectly set to `head_c + dc` (which resolves to `head_c`) instead of `c + dc` (which resolves to `c`). This means that for vertical moves during BFS, the column coordinate will incorrectly reset to the original head's column, leading to invalid paths or getting stuck. This is a severe bug that explains the drastic drop in metric from 28.100 to 1.500.\n\n**Correction:**\nChange the line to:\n`next_r, next_c = r + dr, c + dc`\n\nThe `if/else` condition is unnecessary and incorrect here; `c + dc` is the correct general formula for all directions.\n\nAfter fixing this bug, re-evaluate the performance. The new strategies (food path safety check and maximizing reachable space) are conceptually sound for improving snake AI but add significant computational overhead with multiple BFS/flood-fill operations per move. You might need to optimize these parts further or consider their impact on runtime if the metric doesn't recover as expected.",
+        "confidence": 1.0,
+        "pattern_detected": null
+      }
+    },
+    {
+      "step": 4,
+      "action": "REJECTED",
+      "reason": "11140.0% worse than current best",
+      "proposed_metric": 0.25,
+      "previous_metric": 28.1,
+      "feedback": {
+        "issue_type": "performance",
+        "severity": "critical",
+        "fix_suggestion": "The proposed code implements a significantly more intelligent snake AI by prioritizing safe moves to food, and then safe moves that maximize 'freedom' (reachable cells). While the strategy is conceptually sound for making smarter decisions, the drastic drop in the metric from 28.100 to 0.250 indicates a severe performance regression.\n\nThis regression is almost certainly due to the computational overhead of running multiple Breadth-First Search (BFS) and flood-fill operations (`find_path_bfs` and `count_reachable_cells`) for each potential move. Specifically, the BFS implementation `queue.append((next_pos, path + [direction_name]))` creates a new list for the `path` at every single step of the BFS. For non-trivial board sizes or longer snake bodies, this repeated list concatenation can be extremely inefficient and lead to excessive memory allocation and garbage collection, causing the algorithm to time out.\n\nTo address this, you should optimize the `find_path_bfs` function (and implicitly, `count_reachable_cells` which is a form of BFS/flood-fill) to avoid constant list re-creation. A common and efficient way to reconstruct paths in BFS is to store a `parent_map` or `predecessor` dictionary. When the target is found, the path can be reconstructed by backtracking from the target to the start using this map.\n\n**Concrete suggestion for `find_path_bfs`:**\n1.  Modify `find_path_bfs` to store `parent_map = {start_node: (None, None)}` (or `(parent_pos, direction_to_get_here)`).\n2.  When `next_pos` is added to the queue, update `parent_map[next_pos] = ((r, c), direction_name)`.\n3.  When `target_node` is found, reconstruct the path by starting from `target_node` and backtracking through `parent_map` until `start_node` is reached. Remember to reverse the path as it's built from target to start.\n\nThis optimization will make the BFS more efficient. If the performance remains an issue, you might need to further analyze the number of calls to these functions and consider if there are opportunities to reduce them or introduce heuristics to prune less promising moves earlier.",
+        "confidence": 1.0,
+        "pattern_detected": "performance_regression_from_bfs_list_copying"
+      }
+    },
+    {
+      "step": 5,
+      "action": "ACCEPTED",
+      "proposed_metric": 31.1,
+      "previous_metric": 28.1,
+      "improvement": "10.7% better",
+      "feedback": {
+        "issue_type": "performance",
+        "severity": "major",
+        "fix_suggestion": "The proposed code significantly improves the snake's AI strategy by incorporating a safety check before pursuing food and by prioritizing moves that maximize reachable space. This strategic enhancement is likely the primary reason for the improved metric (31.100).\n\nHowever, a critical performance bottleneck identified in **Step 4** remains unaddressed. The `find_path_bfs` function still uses `queue.append((next_pos, path + [direction_name]))` to build the path. This repeatedly creates new list objects for `path` at every step of the BFS, which is highly inefficient in Python, leading to excessive memory allocation and performance degradation, especially for longer paths or larger boards. While the current metric shows an improvement, this underlying inefficiency could be limiting further gains or cause performance regressions under different test conditions.\n\nTo resolve this, you should optimize `find_path_bfs` to avoid list re-creation. The standard and most efficient way to reconstruct paths in BFS is to use a `parent_map` (or `predecessor` dictionary). When the target is found, the path can be reconstructed by backtracking from the target to the start using this map.\n\n**Concrete suggestion for `find_path_bfs`:**\n1.  Initialize `parent_map = {start_node: (None, None)}` (where `(None, None)` indicates no parent and no incoming direction for the start node).\n2.  When `next_pos` is valid, unvisited, and safe, add it to the queue and update `parent_map[next_pos] = ((r, c), direction_name)`.\n3.  When `target_node` is found (i.e., `next_pos == target_node`), reconstruct the path by starting from `target_node` and backtracking through `parent_map` until `start_node` is reached. Collect the `direction_name` for each step and then reverse the collected list to get the path from start to target.\n\nThis optimization will significantly improve the runtime performance of `find_path_bfs` without changing its correctness or the overall strategic logic, potentially leading to even higher metric scores.",
+        "confidence": 1.0,
+        "pattern_detected": "performance_regression_from_bfs_list_copying"
+      }
+    },
+    {
+      "step": 6,
+      "action": "REJECTED",
+      "reason": "8.2% worse than current best",
+      "proposed_metric": 28.75,
+      "previous_metric": 31.1,
+      "feedback": {
+        "issue_type": "performance",
+        "severity": "major",
+        "fix_suggestion": "The proposed code introduces an additional safety check when going for food, requiring sufficient 'freedom' (reachable cells) after eating. This is a conceptually sound strategic improvement that makes the snake less prone to trapping itself after growing. However, the proposed metric of 28.750 is worse than the current best of 31.100.\n\nThis performance regression is a direct consequence of adding another call to `count_reachable_cells` (which is a BFS/flood-fill operation) within the food-seeking strategy. As highlighted in the feedback from **Step 4** and **Step 5**, the underlying BFS implementations (`find_path_bfs` and `count_reachable_cells`) suffer from a critical performance bottleneck: the repeated creation of new list objects for `path` via `path + [direction_name]` at every step of the BFS. This operation is highly inefficient in Python, leading to excessive memory allocation and garbage collection overhead.\n\nTo address this, you must first optimize the `find_path_bfs` and `count_reachable_cells` functions to avoid list re-creation. The standard and most efficient way to reconstruct paths in BFS is to use a `parent_map` (or `predecessor` dictionary) that stores the previous node and the direction taken to reach the current node. When the target is found, the path can be reconstructed by backtracking from the target to the start.\n\n**Concrete suggestion for `find_path_bfs` (and apply similar logic for `count_reachable_cells` if path reconstruction is needed there, though for counting, just tracking visited nodes is enough):**\n1.  Initialize `parent_map = {start_node: (None, None)}` (or similar, to mark the start with no parent/direction).\n2.  When `next_pos` is valid, unvisited, and safe, add it to the queue and update `parent_map[next_pos] = ((r, c), direction_name)`.\n3.  When `target_node` is found (i.e., `next_pos == target_node`), reconstruct the path:\n    *   Start with `current = target_node` and an empty `path_reconstructed = []`.\n    *   While `current != start_node`:\n        *   Get `parent_pos, direction_to_get_here = parent_map[current]`.\n        *   Prepend `direction_to_get_here` to `path_reconstructed`.\n        *   Set `current = parent_pos`.\n    *   Return `path_reconstructed`.\n\nOnce the BFS operations are optimized in this manner, the strategic improvement you proposed (the additional `freedom_after_eating` check) can be re-evaluated, as it is a beneficial addition to the snake's decision-making process when its performance bottleneck is removed.",
+        "confidence": 1.0,
+        "pattern_detected": "performance_regression_from_bfs_list_copying"
+      }
+    },
+    {
+      "step": 7,
+      "action": "REJECTED",
+      "reason": "169.3% worse than current best",
+      "proposed_metric": 11.55,
+      "previous_metric": 31.1,
+      "feedback": {
+        "issue_type": "correctness",
+        "severity": "critical",
+        "fix_suggestion": "The proposed change introduces an additional safety condition for pursuing food: `len(path_after_eating_to_tail) >= len(snake)`. While the intent behind this heuristic (preventing self-trapping after growth) is sound, the significant drop in the metric from 31.100 to 11.550 indicates that this specific condition is overly restrictive. It is likely causing the snake to avoid food in scenarios where it could have safely eaten, or causing it to choose less optimal paths (via Strategy 2) that lead to lower scores.\n\nTo address this:\n1.  **Revert or refine the new safety heuristic:** Temporarily remove the `and len(path_after_eating_to_tail) >= len(snake)` condition, or experiment with a less strict version (e.g., `len(path_after_eating_to_tail) > 0` or a different threshold). The current heuristic is too conservative.\n2.  **CRITICAL UNADDRESSED PERFORMANCE ISSUE:** As repeatedly highlighted in previous feedback (Steps 4, 5, and 6), the `find_path_bfs` function (and implicitly `count_reachable_cells`) still suffers from a severe performance bottleneck. The line `queue.append((next_pos, path + [direction_name]))` creates a new list object for `path` at every single step of the BFS. This is extremely inefficient and will continue to limit any strategic improvements. You *must* refactor `find_path_bfs` to use a `parent_map` (predecessor dictionary) to reconstruct the path efficiently only once the target is found. This optimization is crucial for achieving higher metrics and should be prioritized.",
+        "confidence": 1.0,
+        "pattern_detected": "overly_conservative_heuristic, performance_regression_from_bfs_list_copying"
+      }
+    },
+    {
+      "step": 8,
+      "action": "REJECTED",
+      "reason": "0.0% worse than current best",
+      "proposed_metric": 31.1,
+      "previous_metric": 31.1,
+      "feedback": {
+        "issue_type": "performance",
+        "severity": "critical",
+        "fix_suggestion": "The proposed code is identical to the current best code, resulting in no change to the metric. More importantly, the critical performance bottleneck identified in previous steps (Steps 4, 5, 6, and 7) remains unaddressed. The `find_path_bfs` function (and implicitly `count_reachable_cells`, which uses a similar traversal logic) still uses `queue.append((next_pos, path + [direction_name]))`. This operation repeatedly creates new list objects for `path` at every step of the BFS, which is highly inefficient in Python. This leads to excessive memory allocation and garbage collection overhead, severely limiting the algorithm's performance and preventing further strategic improvements from translating into higher scores.\n\nTo resolve this, you *must* refactor `find_path_bfs` to use a `parent_map` (or `predecessor` dictionary) for efficient path reconstruction. This optimization is crucial for achieving higher metrics and should be prioritized.\n\n**Concrete suggestion for `find_path_bfs`:**\n1.  Modify `find_path_bfs` to use a `parent_map = {start_node: (None, None)}` (or `(parent_pos, direction_to_get_here)` to store how each node was reached).\n2.  When `next_pos` is added to the queue, update `parent_map[next_pos] = ((r, c), direction_name)`.\n3.  When `target_node` is found, reconstruct the path by starting from `target_node` and backtracking through `parent_map` until `start_node` is reached. Collect the `direction_name` for each step and then reverse the collected list to get the path from start to target.\n\nThis fundamental optimization will significantly improve the runtime performance of your BFS operations, allowing your intelligent strategies to execute more efficiently and potentially achieve much higher scores.",
+        "confidence": 1.0,
+        "pattern_detected": "performance_regression_from_bfs_list_copying"
+      }
+    },
+    {
+      "step": 9,
+      "action": "REJECTED",
+      "reason": "18.3% worse than current best",
+      "proposed_metric": 26.3,
+      "previous_metric": 31.1,
+      "feedback": {
+        "issue_type": "performance",
+        "severity": "major",
+        "fix_suggestion": "The proposed code introduces a conceptually sound strategic improvement by adding a \"path to tail\" strategy (new Strategy 2) to help the snake stay alive and avoid trapping itself when food isn't safely reachable. However, the proposed metric of 26.300 is significantly worse than the current best of 31.100.\n\nThis performance regression is a direct consequence of adding yet another Breadth-First Search (BFS) operation (`find_path_bfs` for the tail path) without addressing the critical performance bottleneck identified repeatedly in previous feedback (Steps 4, 5, 6, 7, and 8). The `find_path_bfs` function (and implicitly `count_reachable_cells` which uses similar logic) continues to suffer from extreme inefficiency due to the line `queue.append((next_pos, path + [direction_name]))`. This operation repeatedly creates new list objects for `path` at every single step of the BFS, leading to excessive memory allocation and garbage collection, which severely limits performance and causes timeouts or slow execution.\n\nTo achieve performance improvements and allow your strategic enhancements to be effective, you *must* prioritize fixing this fundamental BFS inefficiency. The correct and efficient way to reconstruct paths in BFS is to use a `parent_map` (or `predecessor` dictionary).\n\n**Concrete suggestion for `find_path_bfs` (and apply the principle to `count_reachable_cells` if path reconstruction is ever needed there, though for `count_reachable_cells`, `visited` set and queue are generally sufficient):**\n1.  Modify `find_path_bfs` to store a `parent_map`. Initialize it as `parent_map = {start_node: (None, None)}` (where `(None, None)` signifies no parent and no direction to reach the start).\n2.  When `next_pos` is determined to be a valid, unvisited, and safe cell, add it to the queue, and also update `parent_map[next_pos] = ((r, c), direction_name)`. This stores the parent node `(r, c)` and the `direction_name` used to get from the parent to `next_pos`.\n3.  When `target_node` is found (i.e., `next_pos == target_node`), reconstruct the path by backtracking:\n    *   Initialize an empty list `path_reconstructed = []`.\n    *   Start from `current_node = target_node`.\n    *   While `current_node != start_node`:\n        *   Retrieve `parent_pos, direction_to_get_here = parent_map[current_node]`.\n        *   `path_reconstructed.append(direction_to_get_here)` (or `path_reconstructed.insert(0, direction_to_get_here)` if you prefer building from head and then reversing).\n        *   Set `current_node = parent_pos`.\n    *   Finally, `return path_reconstructed[::-1]` (to reverse the path if you appended, or just `return path_reconstructed` if you used `insert(0)`).\n\nOnce this critical BFS optimization is implemented, the new \"path to tail\" strategy can be re-evaluated. It is a valuable strategic component that should perform well once its underlying computational cost is addressed.",
+        "confidence": 1.0,
+        "pattern_detected": "performance_regression_from_bfs_list_copying"
+      }
+    }
+  ]
+}

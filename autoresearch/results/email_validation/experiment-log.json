@@ -1,0 +1,32 @@
+{
+  "status": "completed",
+  "run_id": "run_20260404_193746",
+  "started_at": "2026-04-04 19:37:52",
+  "task": "email_validation",
+  "metric_name": "accuracy",
+  "higher_is_better": true,
+  "baseline_metric": 0.5,
+  "best_metric": 1.0,
+  "iterations": 10,
+  "history": [
+    {
+      "step": 1,
+      "action": "ACCEPTED",
+      "proposed_metric": 1.0,
+      "previous_metric": 0.5,
+      "improvement": "100.0% better"
+    }
+  ],
+  "completed_at": "2026-04-04 19:38:26",
+  "elapsed_seconds": 33.8,
+  "accepted": 1,
+  "rejected": 0,
+  "errors": 0,
+  "token_usage": {
+    "prompt_tokens": 126,
+    "completion_tokens": 733,
+    "total_tokens": 8113,
+    "calls": 1
+  },
+  "estimated_cost_usd": 0.0019
+}

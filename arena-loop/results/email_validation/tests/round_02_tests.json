@@ -1,0 +1,162 @@
+[
+  {
+    "email": "user@example.com",
+    "valid": true,
+    "reason": "standard email"
+  },
+  {
+    "email": "alice.bob@company.org",
+    "valid": true,
+    "reason": "dots in local part"
+  },
+  {
+    "email": "test@sub.domain.co.uk",
+    "valid": true,
+    "reason": "multi-level domain"
+  },
+  {
+    "email": "user+tag@gmail.com",
+    "valid": true,
+    "reason": "plus addressing"
+  },
+  {
+    "email": "name@123.123.123.123",
+    "valid": true,
+    "reason": "IP domain"
+  },
+  {
+    "email": "",
+    "valid": false,
+    "reason": "empty string"
+  },
+  {
+    "email": "not-an-email",
+    "valid": false,
+    "reason": "no @ sign"
+  },
+  {
+    "email": "@nodomain.com",
+    "valid": false,
+    "reason": "no local part"
+  },
+  {
+    "email": "user@",
+    "valid": false,
+    "reason": "no domain"
+  },
+  {
+    "email": "user @example.com",
+    "valid": false,
+    "reason": "space in local part"
+  },
+  {
+    "email": "user@@example.com",
+    "valid": false,
+    "reason": "double @"
+  },
+  {
+    "email": "user@.com",
+    "valid": false,
+    "reason": "domain starts with dot"
+  },
+  {
+    "email": "user@example..com",
+    "valid": false,
+    "reason": "consecutive dots in domain"
+  },
+  {
+    "email": ".user@example.com",
+    "valid": false,
+    "reason": "local part starts with dot"
+  },
+  {
+    "email": "user.@example.com",
+    "valid": false,
+    "reason": "local part ends with dot"
+  },
+  {
+    "email": "user@example.c",
+    "valid": false,
+    "reason": "TLD too short"
+  },
+  {
+    "email": "user@-example.com",
+    "valid": false,
+    "reason": "domain starts with hyphen"
+  },
+  {
+    "email": "a@b.cc",
+    "valid": true,
+    "reason": "minimal valid email"
+  },
+  {
+    "email": "very.long.email.address@very.long.domain.example.com",
+    "valid": true,
+    "reason": "long but valid"
+  },
+  {
+    "email": "user@example.com\n",
+    "valid": false,
+    "reason": "trailing newline"
+  },
+  {
+    "email": "\"first last\"@example.com",
+    "valid": true,
+    "reason": "RFC 5322 allows spaces within a quoted local part. The validator incorrectly rejects this email due to its universal whitespace check (Rule 1).",
+    "generated_by": "TA2"
+  },
+  {
+    "email": "\"a@b\"@example.com",
+    "valid": true,
+    "reason": "RFC 5322 allows the '@' symbol within a quoted local part, as it's part of the local string. The validator incorrectly rejects this because it counts two '@' symbols in total (Rule 2).",
+    "generated_by": "TA2"
+  },
+  {
+    "email": "user@[192.168.1.1]",
+    "valid": true,
+    "reason": "RFC 5321 allows an IP address literal enclosed in square brackets `[]` as a domain. The validator incorrectly rejects this because its domain label character validation (Rule 5, `not all(c.isalnum() or c == '-' for c in label)`) does not account for `[` and `]` characters, treating them as invalid in a hostname context.",
+    "generated_by": "TA2"
+  },
+  {
+    "email": "\".localpart.\"@example.com",
+    "valid": true,
+    "reason": "RFC 5322 allows the local part to start or end with a dot `.` if it is quoted. The validator incorrectly rejects this due to its strict `local_part.startswith('.')` and `local_part.endswith('.')` checks (Rule 4), which do not differentiate between quoted and unquoted local parts.",
+    "generated_by": "TA2"
+  },
+  {
+    "email": "user\u00e9@example.com",
+    "valid": false,
+    "reason": "Standard RFC 5322 email addresses are restricted to ASCII characters in the local part. The validator accepts this email because it lacks specific checks for non-ASCII characters in the local part, despite '\u00e9' being an invalid character for standard email addresses.",
+    "generated_by": "TA2"
+  },
+  {
+    "email": "\"\"@example.com",
+    "valid": true,
+    "reason": "RFC 5322 technically allows an empty quoted local part ('\"\"'), but the validator explicitly rejects it with `if len(local_part) == 2: return False`.",
+    "generated_by": "TA2"
+  },
+  {
+    "email": "user@[IPv6:2001:DB8::1::1]",
+    "valid": false,
+    "reason": "This IPv6 literal is invalid because it contains multiple '::' segments, which is prohibited by RFC 4291. However, the validator's lenient `re.fullmatch(r\"IPv6:[0-9a-fA-F:.]+\", domain_literal_content)` regex accepts it.",
+    "generated_by": "TA2"
+  },
+  {
+    "email": "user@[192.168.1.1 ]",
+    "valid": true,
+    "reason": "RFC 5322 allows 'folding whitespace' (FWS) within domain literals, meaning spaces can appear within the brackets, e.g., '[192.168.1.1 ]'. The validator's `ipv4_pattern` is anchored (`^$`) and does not account for this trailing space, causing it to reject a technically valid IP literal.",
+    "generated_by": "TA2"
+  },
+  {
+    "email": "user@localhost",
+    "valid": true,
+    "reason": "RFC 5321 allows single-label domains (like 'localhost') in certain contexts (e.g., internal networks). The validator rejects this because it requires the domain part to contain at least one dot (`if '.' not in domain_part: return False`).",
+    "generated_by": "TA2"
+  },
+  {
+    "email": "user(comment)@example.com",
+    "valid": true,
+    "reason": "RFC 5322 allows comments (enclosed in parentheses) in both the local and domain parts. The validator's `local_part_overall_regex` does not account for CFWS (Comment Folding White Space) and will reject 'user(comment)' because the parenthesis characters are not part of `local_atom_chars`.",
+    "generated_by": "TA2"
+  }
+]

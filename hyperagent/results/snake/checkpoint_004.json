@@ -1,0 +1,135 @@
+{
+  "generation": 4,
+  "run_id": "run_20260404_193746",
+  "best_metric": 27.5,
+  "baseline_metric": 27.5,
+  "last_valid_gen": 4,
+  "history": [
+    {
+      "type": "task_step",
+      "step": 1,
+      "action": "ACCEPTED",
+      "proposed_metric": 8.85,
+      "previous_metric": 0.05,
+      "improvement_pct": 17600.0
+    },
+    {
+      "type": "task_step",
+      "step": 2,
+      "action": "ACCEPTED",
+      "proposed_metric": 14.9,
+      "previous_metric": 8.85,
+      "improvement_pct": 68.4
+    },
+    {
+      "type": "task_step",
+      "step": 3,
+      "action": "REJECTED",
+      "proposed_metric": 13.7,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 4,
+      "action": "REJECTED",
+      "proposed_metric": 14.9,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 5,
+      "action": "REJECTED",
+      "proposed_metric": 13.7,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 6,
+      "action": "REJECTED",
+      "proposed_metric": 14.05,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 7,
+      "action": "REJECTED",
+      "proposed_metric": 14.45,
+      "previous_metric": 14.9
+    },
+    {
+      "type": "task_step",
+      "step": 8,
+      "action": "ACCEPTED",
+      "proposed_metric": 27.2,
+      "previous_metric": 14.9,
+      "improvement_pct": 82.6
+    },
+    {
+      "type": "task_step",
+      "step": 9,
+      "action": "REJECTED",
+      "proposed_metric": 27.2,
+      "previous_metric": 27.2
+    },
+    {
+      "type": "task_step",
+      "step": 10,
+      "action": "REJECTED",
+      "proposed_metric": 27.2,
+      "previous_metric": 27.2
+    },
+    {
+      "type": "task_step",
+      "step": 11,
+      "action": "ACCEPTED",
+      "proposed_metric": 27.5,
+      "previous_metric": 27.2,
+      "improvement_pct": 1.1
+    },
+    {
+      "type": "task_step",
+      "step": 12,
+      "action": "REJECTED",
+      "proposed_metric": 27.5,
+      "previous_metric": 27.5
+    }
+  ],
+  "generation_log": [
+    {
+      "type": "generation",
+      "gen_id": 1,
+      "valid": true,
+      "files_changed": [
+        "task_agent.py"
+      ],
+      "best_metric": 14.9
+    },
+    {
+      "type": "generation",
+      "gen_id": 2,
+      "valid": true,
+      "files_changed": [
+        "task_agent.py"
+      ],
+      "best_metric": 14.9
+    },
+    {
+      "type": "generation",
+      "gen_id": 3,
+      "valid": true,
+      "files_changed": [
+        "task_agent.py"
+      ],
+      "best_metric": 27.2
+    },
+    {
+      "type": "generation",
+      "gen_id": 4,
+      "valid": true,
+      "files_changed": [
+        "task_agent.py"
+      ],
+      "best_metric": 27.5
+    }
+  ]
+}

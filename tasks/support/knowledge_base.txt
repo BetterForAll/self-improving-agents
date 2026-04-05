@@ -1,0 +1,35 @@
+Product: CloudSync Pro -- Cloud File Synchronization Service
+
+Pricing:
+  - Personal: $9/month or $89/year
+  - Pro: $29/month or $290/year (most popular)
+  - Enterprise: $79/month per seat, annual billing only
+
+Storage Limits:
+  - Personal: 50GB
+  - Pro: 500GB
+  - Enterprise: 5TB per seat
+
+Free Trial: 14 days on any plan, no credit card required
+
+Supported Platforms: Windows, Mac, Linux, iOS, Android, Web browser
+
+Key Features:
+  - Real-time sync across all devices
+  - End-to-end encryption (AES-256)
+  - Version history (30 days Personal, unlimited Pro/Enterprise)
+  - Selective sync (choose which folders to sync)
+  - Team folders with permission controls (Pro/Enterprise)
+
+Cancellation: Anytime. Prorated refund within first 30 days.
+After 30 days: no refund, access continues until end of billing period.
+
+Support:
+  - Personal: email only, response within 24 hours
+  - Pro: email + chat, response within 4 hours
+  - Enterprise: email + chat + phone, dedicated account manager
+
+Common Issues:
+  - Sync conflicts: newest edit wins, older version saved to version history
+  - Large files (>10GB): supported on Pro/Enterprise only
+  - Offline access: files marked as "available offline" can be accessed without internet

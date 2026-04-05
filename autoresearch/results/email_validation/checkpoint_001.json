@@ -1,0 +1,15 @@
+{
+  "step": 1,
+  "run_id": "run_20260404_193746",
+  "best_metric": 1.0,
+  "baseline_metric": null,
+  "history": [
+    {
+      "step": 1,
+      "action": "ACCEPTED",
+      "proposed_metric": 1.0,
+      "previous_metric": 0.5,
+      "improvement": "100.0% better"
+    }
+  ]
+}

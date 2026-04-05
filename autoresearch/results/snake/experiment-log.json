@@ -1,0 +1,95 @@
+{
+  "status": "completed",
+  "run_id": "run_20260404_193746",
+  "started_at": "2026-04-04 19:37:52",
+  "task": "snake",
+  "metric_name": "score",
+  "higher_is_better": true,
+  "baseline_metric": 0.05,
+  "best_metric": 14.55,
+  "iterations": 10,
+  "history": [
+    {
+      "step": 1,
+      "action": "ACCEPTED",
+      "proposed_metric": 12.05,
+      "previous_metric": 0.05,
+      "improvement": "24000.0% better"
+    },
+    {
+      "step": 2,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 5.6,
+      "previous_metric": 12.05
+    },
+    {
+      "step": 3,
+      "action": "ACCEPTED",
+      "proposed_metric": 14.55,
+      "previous_metric": 12.05,
+      "improvement": "20.7% better"
+    },
+    {
+      "step": 4,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.55,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 5,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.55,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 6,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.15,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 7,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.15,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 8,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.15,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 9,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 14.15,
+      "previous_metric": 14.55
+    },
+    {
+      "step": 10,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 0.0,
+      "previous_metric": 14.55
+    }
+  ],
+  "completed_at": "2026-04-04 19:44:56",
+  "elapsed_seconds": 423.6,
+  "accepted": 2,
+  "rejected": 8,
+  "errors": 0,
+  "token_usage": {
+    "prompt_tokens": 20486,
+    "completion_tokens": 25560,
+    "total_tokens": 120359,
+    "calls": 10
+  },
+  "estimated_cost_usd": 0.07
+}
