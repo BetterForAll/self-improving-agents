@@ -18,9 +18,9 @@ and proposing new ones.
 ## Key Findings
 
 - **Feedback Loop is the best value** -- highest score on snake (31.1),
-  tied for best on support (~66.5 vs Arena Loop's 67.6, within LLM-judge
-  noise), at a fraction of the cost (~$0.07 per task vs Arena Loop's
-  ~$0.40). Its strength on the support task is no accident -- this
+  tied for best on support (66.5 vs Arena Loop's 67.6, within LLM-judge
+  noise), at a fraction of the cost ($0.07 per task vs Arena Loop's
+  $0.40). Its strength on the support task is no accident -- this
   architecture was originally built for a Graph RAG system, a structurally
   similar retrieval + answer quality problem.
 - **Fixed benchmarks create false confidence, Arena Loop exposes it** --
