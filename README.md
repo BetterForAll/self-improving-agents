@@ -6,6 +6,14 @@ adversarial arena with self-modifying agents. Each level adds one key idea.
 Independent research comparing existing approaches to self-improving code agents
 and proposing new ones.
 
+## Results
+
+| Snake Game AI | Email Validation | Customer Support |
+|:---:|:---:|:---:|
+| ![Snake](assets/chart_snake.png) | ![Email](assets/chart_email_validation.png) | ![Support](assets/chart_support.png) |
+
+---
+
 - **Level 1 -- AutoResearch Loop:** LLM improves code against a benchmark (a la Karpathy's [AutoResearch](https://github.com/karpathy/autoresearch)).
 
 ![Level 1: AutoResearch Loop](assets/level1.png)
