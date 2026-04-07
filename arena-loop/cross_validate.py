@@ -376,15 +376,28 @@ def cross_validate_support():
         print("  " + "-" * 70)
     print()
 
-    # Find winners
+    # Find top scorers (noise-aware: ~7 point threshold for LLM-as-judge)
+    noise_threshold = 7.0
     level_results = {k: v for k, v in results.items() if k != "baseline"}
     if level_results:
-        orig_winner = max(level_results.items(), key=lambda x: x[1]["score"])
-        print(f"  WINNER (original {len(test_cases)} questions): {orig_winner[1]['name']} with {orig_winner[1]['score']:.2f}")
+        sorted_orig = sorted(level_results.items(), key=lambda x: x[1]["score"], reverse=True)
+        top = sorted_orig[0]
+        runner_up = sorted_orig[1] if len(sorted_orig) > 1 else None
+        if runner_up and top[1]["score"] - runner_up[1]["score"] <= noise_threshold:
+            print(f"  Original {len(test_cases)} questions: {top[1]['name']} ({top[1]['score']:.2f}) and "
+                  f"{runner_up[1]['name']} ({runner_up[1]['score']:.2f}) are within measurement noise (~{noise_threshold:.0f} points)")
+        else:
+            print(f"  WINNER (original {len(test_cases)} questions): {top[1]['name']} with {top[1]['score']:.2f}")
         if expanded_tests:
-            exp_winner = max(level_results.items(),
-                           key=lambda x: x[1]["expanded_score"] or 0)
-            print(f"  WINNER (expanded {len(expanded_tests)} questions): {exp_winner[1]['name']} with {exp_winner[1]['expanded_score']:.2f}")
+            sorted_exp = sorted(level_results.items(),
+                               key=lambda x: x[1]["expanded_score"] or 0, reverse=True)
+            top_exp = sorted_exp[0]
+            runner_exp = sorted_exp[1] if len(sorted_exp) > 1 else None
+            if runner_exp and (top_exp[1]["expanded_score"] or 0) - (runner_exp[1]["expanded_score"] or 0) <= noise_threshold:
+                print(f"  Expanded {len(expanded_tests)} questions: {top_exp[1]['name']} ({top_exp[1]['expanded_score']:.2f}) and "
+                      f"{runner_exp[1]['name']} ({runner_exp[1]['expanded_score']:.2f}) are within measurement noise (~{noise_threshold:.0f} points)")
+            else:
+                print(f"  WINNER (expanded {len(expanded_tests)} questions): {top_exp[1]['name']} with {top_exp[1]['expanded_score']:.2f}")
     print()
 
     # Save results

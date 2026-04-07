@@ -34,9 +34,13 @@ import test_agent
 
 RESULTS_DIR = os.path.join(DIR, "results")
 
+# Module-level override for results directory (set by --label flag)
+_results_dir_override = None
+
 
 def get_results_dir(task_name):
-    return os.path.join(RESULTS_DIR, task_name)
+    base = _results_dir_override if _results_dir_override else RESULTS_DIR
+    return os.path.join(base, task_name)
 
 
 def save_solution(task_name, filename, code):
@@ -319,6 +323,10 @@ if __name__ == "__main__":
     parser.add_argument("--rounds", type=int, default=6, help="Number of rounds")
     parser.add_argument("--fresh", action="store_true", help="Ignore previous results, start fresh")
     parser.add_argument("--run-id", default=None, help="Run ID from run_all.py")
+    parser.add_argument("--label", default=None,
+                        help="Label for results folder (e.g. 'single' -> results-single/)")
     args = parser.parse_args()
+    if args.label:
+        _results_dir_override = os.path.join(DIR, f"results-{args.label}")
     run_experiment(n_code=args.code, n_test=args.test, n_rounds=args.rounds,
                    resume=not args.fresh, task_name=args.task, run_id=args.run_id)

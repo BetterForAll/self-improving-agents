@@ -22,14 +22,18 @@ import llm
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
 LEVELS = [
-    {"folder": "autoresearch", "name": "AutoResearch", "level": 1,
+    {"key": "autoresearch", "folder": "autoresearch", "name": "AutoResearch", "level": 1,
      "description": "Basic loop: propose -> benchmark -> keep if better"},
-    {"folder": "feedback-loop", "name": "Feedback Loop", "level": 2,
+    {"key": "feedback-loop", "folder": "feedback-loop", "name": "Feedback Loop", "level": 2,
      "description": "Adds structured reviewer feedback (issue type, severity, fix)"},
-    {"folder": "hyperagent", "name": "HyperAgent", "level": 3,
+    {"key": "hyperagent", "folder": "hyperagent", "name": "HyperAgent", "level": 3,
      "description": "Adds self-improving strategy (meta-agent updates approach)"},
-    {"folder": "arena-loop", "name": "Arena Loop", "level": 4,
-     "description": "Adds adversarial tests + tournament selection"},
+    {"key": "arena-single", "folder": "arena-loop", "name": "Arena Single", "level": "4a",
+     "results_subfolder": "results-single",
+     "description": "Adversarial co-evolution (1 code agent vs 1 test agent)"},
+    {"key": "arena-loop", "folder": "arena-loop", "name": "Arena Loop", "level": "4b",
+     "results_subfolder": "results",
+     "description": "Adversarial tests + tournament selection (4 agents)"},
 ]
 
 ALL_TASKS = ["snake", "support", "email_validation"]
@@ -37,9 +41,9 @@ ALL_TASKS = ["snake", "support", "email_validation"]
 OUTPUT_FILE = os.path.join(ROOT, "experiment-results.md")
 
 
-def load_experiment_log(level_folder, task):
+def load_experiment_log(level_folder, task, results_subfolder="results"):
     """Load experiment-log.json for a given level and task."""
-    path = os.path.join(ROOT, level_folder, "results", task, "experiment-log.json")
+    path = os.path.join(ROOT, level_folder, results_subfolder, task, "experiment-log.json")
     if not os.path.exists(path):
         return None
     with open(path) as f:
@@ -64,10 +68,10 @@ def build_summary_table(all_results):
     lines.append("|-------|------|--------|----------|------|-------------|-------|------|--------|")
 
     for level_info in LEVELS:
-        folder = level_info["folder"]
+        key = level_info["key"]
         name = level_info["name"]
         for task in ALL_TASKS:
-            log = all_results.get(f"{folder}/{task}")
+            log = all_results.get(f"{key}/{task}")
             if not log:
                 continue
 
@@ -158,15 +162,14 @@ TASK_EXPLANATIONS = {
             "against specific facts from the knowledge base (keyword match first, LLM YES/NO fallback "
             "for paraphrasing), plus quality checks for relevance, tone, and contradictions. "
             "This reduces scoring noise from 30+ points (old LLM 0-100 judge) to under 7 points.\n\n"
-            "The original Best scores varied wildly due to LLM judge noise -- Arena Loop's 22.39 was "
-            "against 28 expanded questions, and HyperAgent's original 66.3 was a lucky single judge call "
-            "that trapped it at a noisy ceiling."
+            "The original Best scores varied wildly due to LLM judge noise. Arena Loop's Best is scored "
+            "against 28 expanded questions (not the original 10), and HyperAgent's original run score "
+            "was inflated by a noisy single judge call. The Unified Judge column provides a fair comparison."
         ),
         "arena_note": (
-            "**Arena Loop's reported Best of 22.39 is misleading.** It was scored against an "
-            "expanded test suite of 28 adversarial questions, not the original 10. The unified "
-            "judge column shows its score on the original questions for a fair comparison. "
-            "See Cross-Validation below for the full data."
+            "**Arena Loop's reported Best is scored against an expanded test suite of 28 adversarial "
+            "questions**, not the original 10. The unified judge column shows its score on the original "
+            "questions for a fair comparison. See Cross-Validation below for the full data."
         ),
     },
 }
@@ -180,8 +183,8 @@ def build_per_task_section(all_results, task):
 
     task_data = []
     for level_info in LEVELS:
-        folder = level_info["folder"]
-        log = all_results.get(f"{folder}/{task}")
+        key = level_info["key"]
+        log = all_results.get(f"{key}/{task}")
         if log:
             task_data.append((level_info, log))
 
@@ -250,9 +253,9 @@ def build_per_task_section(all_results, task):
         if arena_expanded:
             if unified_scores:
                 # Use unified judge scores for all levels
-                uscore = unified_scores.get(level_info["folder"])
+                uscore = unified_scores.get(level_info["key"])
                 vs_orig = f"**{format_metric(uscore)}**" if uscore is not None else "N/A"
-            elif level_info["folder"] == "arena-loop":
+            elif level_info["key"] == "arena-loop":
                 vs_orig = f"**{format_metric(arena_peak)}**"
             else:
                 vs_orig = best
@@ -392,15 +395,11 @@ def _build_email_cross_validation(all_results):
     lines.append("| Level | vs Original | vs Expanded | Combined* |")
     lines.append("|-------|-------------|-------------|-----------|")
 
-    levels = [
-        ("AutoResearch", "autoresearch"),
-        ("Feedback Loop", "feedback-loop"),
-        ("HyperAgent", "hyperagent"),
-        ("Arena Loop", "arena-loop"),
-    ]
-
-    for name, folder in levels:
-        best_path = os.path.join(ROOT, folder, "results", "email_validation",
+    for level_info in LEVELS:
+        name = level_info["name"]
+        folder = level_info["folder"]
+        subfolder = level_info.get("results_subfolder", "results")
+        best_path = os.path.join(ROOT, folder, subfolder, "email_validation",
                                   "solutions", "best.py")
         if not os.path.exists(best_path):
             lines.append(f"| {name} | NO SOLUTION | - | - |")
@@ -411,9 +410,7 @@ def _build_email_cross_validation(all_results):
         score_exp = score_solution(code, expanded_tests)
         all_tests = {json.dumps(t, sort_keys=True): t for t in initial_tests + expanded_tests}
         score_all = score_solution(code, list(all_tests.values()))
-        if folder == "arena-loop":
-            note = " **best overall**"
-        elif score_orig >= 0.99 and score_exp < 0.70:
+        if score_orig >= 0.99 and score_exp < 0.70:
             note = " (brittle)"
         elif score_exp < 0.70:
             note = " (drops on harder tests)"
@@ -486,19 +483,14 @@ def _build_support_unified_section(all_results, unified):
         lines.append(f"| Level | Original Run | Unified Judge | Difference |")
         lines.append("|-------|-------------|--------------|------------|")
 
-    levels = [
-        ("AutoResearch", "autoresearch"),
-        ("Feedback Loop", "feedback-loop"),
-        ("HyperAgent", "hyperagent"),
-        ("Arena Loop", "arena-loop"),
-    ]
-
     best_orig = None
     best_orig_name = None
     best_exp = None
     best_exp_name = None
-    for name, folder in levels:
-        entry = scores.get(folder, {})
+    for level_info in LEVELS:
+        name = level_info["name"]
+        key = level_info["key"]
+        entry = scores.get(key, {})
         orig_score = entry.get("score")
         exp_score = entry.get("expanded_score")
         if orig_score is None:
@@ -511,7 +503,7 @@ def _build_support_unified_section(all_results, unified):
             best_exp = exp_score
             best_exp_name = name
 
-        log = all_results.get(f"{folder}/support")
+        log = all_results.get(f"{key}/support")
         run_score = log.get("best_metric") if log else None
         run_str = format_metric(run_score)
 
@@ -536,16 +528,35 @@ def _build_support_unified_section(all_results, unified):
 
     lines.append("")
 
+    # Noise-aware winner declarations (~7 point noise threshold for LLM-as-judge)
+    noise_threshold = 7.0
     if has_expanded:
-        lines.append(f"**Winner (original {suite_size} questions):** {best_orig_name} "
-                     f"with {format_metric(best_orig)}")
-        if best_exp_name:
+        # Check if top scores are within noise
+        orig_scores = [(l["name"], scores.get(l["key"], {}).get("score", 0)) for l in LEVELS if scores.get(l["key"])]
+        exp_scores = [(l["name"], scores.get(l["key"], {}).get("expanded_score", 0)) for l in LEVELS if scores.get(l["key"])]
+        orig_scores.sort(key=lambda x: x[1], reverse=True)
+        exp_scores.sort(key=lambda x: x[1], reverse=True)
+
+        if len(orig_scores) >= 2 and orig_scores[0][1] - orig_scores[1][1] <= noise_threshold:
+            lines.append(f"**Original {suite_size} questions:** {orig_scores[0][0]} "
+                         f"({format_metric(orig_scores[0][1])}) and {orig_scores[1][0]} "
+                         f"({format_metric(orig_scores[1][1])}) are within measurement "
+                         f"noise (~{noise_threshold:.0f} points)")
+        else:
+            lines.append(f"**Winner (original {suite_size} questions):** {best_orig_name} "
+                         f"with {format_metric(best_orig)}")
+
+        if len(exp_scores) >= 2 and exp_scores[0][1] - exp_scores[1][1] <= noise_threshold:
+            lines.append(f"**Expanded {expanded_size} questions:** {exp_scores[0][0]} "
+                         f"({format_metric(exp_scores[0][1])}) and {exp_scores[1][0]} "
+                         f"({format_metric(exp_scores[1][1])}) are within measurement "
+                         f"noise (~{noise_threshold:.0f} points)")
+        elif best_exp_name:
             lines.append(f"**Winner (expanded {expanded_size} questions):** {best_exp_name} "
                          f"with {format_metric(best_exp)}")
         lines.append("")
         lines.append(
-            f"Feedback Loop and Arena Loop are within scoring noise (~7 points) on both "
-            f"suites. HyperAgent drops on the expanded suite, showing less robust solutions."
+            f"HyperAgent drops on the expanded suite, showing less robust solutions."
         )
     else:
         if best_orig_name:
@@ -579,17 +590,13 @@ def _build_support_pre_expansion_section(all_results):
     lines.append("| Level | Best Score | Test Suite Size | Notes |")
     lines.append("|-------|-----------|-----------------|-------|")
 
-    levels = [
-        ("AutoResearch", "autoresearch"),
-        ("Feedback Loop", "feedback-loop"),
-        ("HyperAgent", "hyperagent"),
-    ]
-
-    for name, folder in levels:
-        log = all_results.get(f"{folder}/support")
+    for level_info in LEVELS:
+        if level_info["folder"] == "arena-loop":
+            continue
+        log = all_results.get(f"{level_info['key']}/support")
         if log:
             best = log.get("best_metric")
-            lines.append(f"| {name} | {format_metric(best)} | 10 (original) | scored on fixed test suite |")
+            lines.append(f"| {level_info['name']} | {format_metric(best)} | 10 (original) | scored on fixed test suite |")
 
     lines.append(
         f"| Arena Loop | {format_metric(arena_best)} | {arena_suite_size} (expanded) | "
@@ -626,21 +633,14 @@ def _build_snake_cross_validation(all_results):
     lines.append("| Level | Best Score | Notes |")
     lines.append("|-------|-----------|-------|")
 
-    levels = [
-        ("AutoResearch", "autoresearch"),
-        ("Feedback Loop", "feedback-loop"),
-        ("HyperAgent", "hyperagent"),
-        ("Arena Loop", "arena-loop"),
-    ]
-
-    for name, folder in levels:
-        log = all_results.get(f"{folder}/snake")
+    for level_info in LEVELS:
+        log = all_results.get(f"{level_info['key']}/snake")
         if log:
             best = log.get("best_metric")
             note = ""
-            if folder == "arena-loop" and peak_pre is not None:
+            if level_info["key"] == "arena-loop" and peak_pre is not None:
                 note = f"pre-expansion peak: {format_metric(peak_pre)} (round {peak_round})"
-            lines.append(f"| {name} | {format_metric(best)} | {note} |")
+            lines.append(f"| {level_info['name']} | {format_metric(best)} | {note} |")
 
     lines.append("")
     return "\n".join(lines)
@@ -648,7 +648,7 @@ def _build_snake_cross_validation(all_results):
 
 def build_cross_validation_section(all_results):
     """Build cross-validation sections for all tasks where Arena Loop ran."""
-    has_arena = any(k.startswith("arena-loop/") for k in all_results)
+    has_arena = any(k.startswith("arena-loop/") or k.startswith("arena-single/") for k in all_results)
     if not has_arena:
         return ""
 
@@ -658,9 +658,9 @@ def build_cross_validation_section(all_results):
     lines.append("**Why is this section needed?** Arena Loop (Level 4) doesn't just improve code -- ")
     lines.append("it also expands the test suite with adversarial edge cases. This means its reported ")
     lines.append("scores are measured against a HARDER test suite than Levels 1-3, making direct ")
-    lines.append("comparison of the \"Best\" column in the summary table misleading. A score of 22.39 ")
-    lines.append("on 28 hard questions is not worse than 66.5 on 10 easy questions -- they're ")
-    lines.append("different scales.")
+    lines.append("comparison of the \"Best\" column in the summary table misleading. Scores on ")
+    lines.append("expanded test suites are not comparable to scores on original test suites -- ")
+    lines.append("they're different scales.")
     lines.append("")
     lines.append("This section puts all levels on the same scale for each task.")
     lines.append("")
@@ -749,10 +749,17 @@ IMPORTANT CONTEXT:
 INSTRUCTIONS: Write the analysis using EXACTLY this structure. Do not add or skip sections.
 Only discuss tasks that have data. Do not mention tasks with no results.
 Use plain ASCII only (no Unicode characters). Be concise and data-driven.
+Do NOT use superlatives like "superior", "exceptional", or "groundbreaking".
+When scores are within ~7 points on LLM-as-judge tasks (support), say they are
+within measurement noise and do NOT declare a winner. Only declare winners when
+the gap is clearly outside the noise range. These are N=1 experiments -- state
+findings as observations, not universal truths.
 
 ## Per-Task Winner
 
-For each task, state which level won and why in 2-3 sentences.
+For each task, state which level performed best and why in 2-3 sentences.
+If scores are within noise (~7 points for support), say so explicitly instead
+of declaring a winner.
 
 ## What Each Level Adds
 
@@ -766,8 +773,9 @@ Explain the key finding across ALL tasks: Arena Loop's reported scores appear lo
 because it is scored against harder, expanded test suites. When compared fairly
 (same test suite), Arena Loop is competitive or best. For email_validation, levels
 1-3 scored high on fixed tests but are brittle against adversarial tests. For
-support, Arena Loop's pre-expansion peak is comparable to the best of levels 1-3.
-This proves that a fixed benchmark gets gamed.
+support, Feedback Loop and Arena Loop are within measurement noise of each other.
+The email_validation cross-validation cleanly demonstrates that fixed benchmarks
+get gamed.
 
 ## Cost-Effectiveness
 
@@ -796,11 +804,13 @@ def main():
 
     for level_info in LEVELS:
         folder = level_info["folder"]
+        key = level_info["key"]
+        subfolder = level_info.get("results_subfolder", "results")
         for task in ALL_TASKS:
-            log = load_experiment_log(folder, task)
+            log = load_experiment_log(folder, task, subfolder)
             if log:
-                all_results[f"{folder}/{task}"] = log
-                print(f"  Found: {folder}/results/{task}/experiment-log.json")
+                all_results[f"{key}/{task}"] = log
+                print(f"  Found: {folder}/{subfolder}/{task}/experiment-log.json")
                 found += 1
 
     # Discover which tasks actually have results (ignore tasks with no data)
@@ -848,7 +858,7 @@ def main():
     lines.append("")
     lines.append("- Model: Gemini 2.5 Flash")
     tested_levels = [l["name"] for l in LEVELS
-                     if any(l["folder"] + "/" + t in all_results for t in active_tasks)]
+                     if any(l["key"] + "/" + t in all_results for t in active_tasks)]
     lines.append(f"- Levels tested: {', '.join(tested_levels)}")
     lines.append(f"- Tasks tested: {', '.join(active_tasks)}")
     lines.append(f"- Total experiments: {found}")
@@ -871,6 +881,14 @@ def main():
     if cross_val:
         lines.append(cross_val)
 
+    lines.append("## Limitations")
+    lines.append("")
+    lines.append("- **Single run per experiment (N=1)** -- no error bars or confidence intervals.")
+    lines.append("  Snake and email_validation are deterministic (reproducible given the same code),")
+    lines.append("  but support scores have ~7 point noise from LLM-as-judge scoring.")
+    lines.append("- **Small task set (3 tasks)** -- findings may not generalize to other domains.")
+    lines.append("- **Single model (Gemini 2.5 Flash)** -- results may differ with other LLMs.")
+    lines.append("")
     lines.append("## Analysis")
     lines.append("")
     lines.append("*Analysis generated by Gemini 2.5 Flash*")
