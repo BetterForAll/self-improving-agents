@@ -30,9 +30,9 @@ and proposing new ones.
   on email validation's original tests, but dropped to 58-62% on Arena Loop's
   adversarial suite. Arena Loop held at 84%. The solutions that looked
   perfect were brittle.
-- **Feedback Loop is the best value** -- highest score on snake (31.1),
-  competitive on support (72.86), at a fraction of Arena Loop's cost
-  ($0.03 vs $0.63 per task)
+- **Feedback Loop is the best cost-performance tradeoff** -- wins snake
+  (31.1 vs Arena's 29.2), ties Arena on support (74.67 vs 70.67, within
+  noise), but costs 20x less ($0.03 vs $0.63 per task)
 - **Arena Loop builds robustness** -- scored 78.16 on support against 28
   adversarial questions (vs 10 original), climbing every round as the
   test suite grew. On the same 10 questions, Feedback Loop (74.67) and
