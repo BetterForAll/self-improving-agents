@@ -1,0 +1,179 @@
+[
+  {
+    "question": "How much does it cost?",
+    "expected": "Personal is $9/month or $89/year, Pro is $29/month or $290/year, Enterprise is $79/month per seat with annual billing only."
+  },
+  {
+    "question": "Can I try it for free?",
+    "expected": "Yes, there is a 14-day free trial on any plan, no credit card required."
+  },
+  {
+    "question": "Does it work on my iPhone?",
+    "expected": "Yes, CloudSync Pro supports iOS along with Windows, Mac, Linux, Android, and web browsers."
+  },
+  {
+    "question": "I want to cancel, can I get a refund?",
+    "expected": "You can cancel anytime. Within the first 30 days you get a prorated refund. After 30 days there is no refund but you keep access until the end of your billing period."
+  },
+  {
+    "question": "How much storage do I get on the Pro plan?",
+    "expected": "The Pro plan includes 500GB of storage."
+  },
+  {
+    "question": "What happens if two people edit the same file?",
+    "expected": "The newest edit wins and the older version is automatically saved to version history so nothing is lost."
+  },
+  {
+    "question": "Can I access my files without internet?",
+    "expected": "Yes, files marked as available offline can be accessed without an internet connection."
+  },
+  {
+    "question": "Is my data encrypted?",
+    "expected": "Yes, CloudSync Pro uses end-to-end encryption with AES-256."
+  },
+  {
+    "question": "How fast is your support response?",
+    "expected": "It depends on your plan: Personal gets email within 24 hours, Pro gets email and chat within 4 hours, Enterprise gets email, chat, phone, and a dedicated account manager."
+  },
+  {
+    "question": "Can I upload a 15GB video file?",
+    "expected": "Large files over 10GB are supported on Pro and Enterprise plans only. If you are on Personal, you would need to upgrade."
+  },
+  {
+    "question": "If I have a 15GB file, can I sync it using the Personal plan?",
+    "expected": "No, large files (>10GB) are supported on Pro/Enterprise only. The Personal plan does not support syncing files of that size.",
+    "generated_by": "TA2",
+    "fact_checks": [
+      {
+        "description": "The answer explicitly states 'No'.",
+        "keywords": [
+          "no"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The answer explains that files larger than 10GB are supported only on Pro/Enterprise plans.",
+        "keywords": [
+          ">10gb",
+          "pro/enterprise",
+          "only"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The answer states that the Personal plan does not support syncing files of the given size.",
+        "keywords": [
+          "personal plan",
+          "not support",
+          "files of that size"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "I bought the Pro plan on January 1st and cancelled on February 5th. Will I get a refund?",
+    "expected": "No, you will not receive a refund. You cancelled after more than 30 days (January 1st to February 5th is 35 days). Prorated refunds are only available within the first 30 days. After 30 days, there is no refund, and access continues until the end of the billing period.",
+    "generated_by": "TA2",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that the customer will not receive a refund?",
+        "keywords": [
+          "no",
+          "not receive refund"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer explain that the cancellation occurred after more than 30 days?",
+        "keywords": [
+          "after more than 30 days",
+          "35 days"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer correctly state that January 1st to February 5th is 35 days?",
+        "keywords": [
+          "january 1st",
+          "february 5th",
+          "35 days"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer mention that prorated refunds are only available within the first 30 days?",
+        "keywords": [
+          "prorated refunds",
+          "within first 30 days"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer clarify that after 30 days, there is no refund?",
+        "keywords": [
+          "after 30 days",
+          "no refund"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer state that access continues until the end of the billing period after 30 days?",
+        "keywords": [
+          "access continues",
+          "end of billing period"
+        ],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "How much cheaper is it to pay for the Pro plan annually compared to paying monthly for a year?",
+    "expected": "The Pro plan costs $29/month or $290/year. Paying monthly for a year would cost $29 multiplied by 12 months, totaling $348. The annual plan costs $290. Therefore, paying annually saves you $58 per year ($348 - $290).",
+    "generated_by": "TA2",
+    "fact_checks": [
+      {
+        "description": "The answer explicitly states the monthly cost of the Pro plan is $29.",
+        "keywords": [
+          "$29/month",
+          "pro plan"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "The answer explicitly states the annual cost of the Pro plan is $290.",
+        "keywords": [
+          "$290/year",
+          "pro plan"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "The answer calculates the total cost of paying monthly for a year as $348.",
+        "keywords": [
+          "$348",
+          "29 multiplied by 12",
+          "monthly for a year"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The answer states that paying annually saves $58 per year.",
+        "keywords": [
+          "$58",
+          "saves",
+          "per year"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The calculation ($348 - $290) is shown to derive the savings.",
+        "keywords": [
+          "$348 - $290",
+          "calculation"
+        ],
+        "weight": 2
+      }
+    ]
+  }
+]

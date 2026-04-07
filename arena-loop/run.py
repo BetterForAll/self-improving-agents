@@ -230,7 +230,7 @@ def run_arena(n_code=4, n_test=4, n_rounds=6, tournament_every=2,
             "previous_metric": round(prev_round_metric, 4) if round_num > start_from + 1 else round(baseline_metric, 4),
             "pre_expansion_metric": round(pre_expansion_metric, 4),
             "global_best_code": global_best_code,
-            "test_suite": list(test_suite) if ev.adversarial else None,
+            "test_suite": list(test_suite) if (ev.adversarial or ev.llm_judge) else None,
             "test_suite_size": len(test_suite),
             "tournament": round_num % tournament_every == 0,
             "code_agents": [{"id": a.agent_id, "wins": a.wins, "gen": a.generation}

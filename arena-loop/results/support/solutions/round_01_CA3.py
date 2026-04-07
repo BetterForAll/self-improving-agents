@@ -1,3 +1,5 @@
+import re
+
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
 
@@ -7,19 +9,63 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
-    # Input validation for 'question'
-    if not isinstance(question, str):
-        raise TypeError("The 'question' argument must be a string.")
-    if not question.strip():
-        raise ValueError("The 'question' argument cannot be empty or contain only whitespace.")
 
-    # Input validation for 'knowledge_base'
-    if not isinstance(knowledge_base, str):
-        raise TypeError("The 'knowledge_base' argument must be a string.")
-    if not knowledge_base.strip():
-        # If the knowledge base is empty, the function cannot fulfill its purpose.
-        # This is an edge case of "empty datasets" or "malformed input" for the function's core logic.
-        raise ValueError("The 'knowledge_base' argument cannot be empty or contain only whitespace, as it's required to answer questions.")
+    # Strategy: Use generators for intermediate data processing steps
+    # to avoid building large lists in memory, which is crucial for
+    # handling potentially large knowledge bases.
 
-    # Current baseline: just return a generic response (actual NLP logic would go here)
-    return "Thank you for contacting us. Please visit our website for more information."
+    # 1. Generator to chunk the knowledge base into sentences.
+    #    This avoids creating a full list of all sentences in memory.
+    def chunk_knowledge_base(kb_text):
+        # A basic sentence splitter. In a more sophisticated system,
+        # one might use an NLP library (e.g., NLTK, spaCy) for better accuracy.
+        # This regex splits by common sentence terminators followed by whitespace,
+        # keeping the terminator with the sentence.
+        sentences = re.split(r'(?<=[.!?])\s+', kb_text.strip())
+        for sentence in sentences:
+            if sentence.strip():
+                yield sentence.strip()
+
+    # 2. Generator to filter relevant chunks based on question keywords.
+    #    This processes chunks from the `chunk_knowledge_base` generator
+    #    on-the-fly, yielding only relevant ones without storing all chunks
+    #    or all relevant chunks in a temporary list.
+    def find_relevant_chunks(chunks_generator, keywords):
+        for chunk in chunks_generator:
+            # Simple keyword matching for relevance (case-insensitive)
+            if any(keyword in chunk.lower() for keyword in keywords):
+                yield chunk
+
+    # Pre-process the question to extract keywords for matching.
+    # We use a set for efficient lookup and filter out very short words
+    # that are unlikely to be meaningful keywords.
+    question_keywords = set(word for word in re.findall(r'\b\w+\b', question.lower()) if len(word) > 2)
+
+    # If no meaningful keywords are extracted from the question,
+    # we cannot perform an effective search.
+    if not question_keywords:
+        return "I couldn't understand your question. Please provide more specific details."
+
+    # Pipeline the generators:
+    # First, get a generator for knowledge base chunks.
+    kb_chunks_gen = chunk_knowledge_base(knowledge_base)
+    # Then, get a generator for relevant chunks from the kb_chunks_gen, using question keywords.
+    relevant_chunks_gen = find_relevant_chunks(kb_chunks_gen, question_keywords)
+
+    # Collect a limited number of relevant chunks to form the answer.
+    # We limit the collection to prevent excessively long answers and
+    # to manage memory if many chunks are relevant (though the generators
+    # already prevent storing all initially).
+    max_relevant_chunks_to_collect = 5
+    collected_answers = []
+    for i, chunk in enumerate(relevant_chunks_gen):
+        if i >= max_relevant_chunks_to_collect:
+            break
+        collected_answers.append(chunk)
+
+    if collected_answers:
+        # Join the collected relevant chunks to form the final answer.
+        return " ".join(collected_answers)
+    else:
+        # Fallback response if no relevant information is found.
+        return "I apologize, but I couldn't find specific information related to your question in our knowledge base. Please try rephrasing your question or visit our website for more details."

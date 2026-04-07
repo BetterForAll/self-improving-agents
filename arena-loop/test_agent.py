@@ -84,10 +84,10 @@ def propose_support_tests(agent, current_best_code, knowledge_base):
         f'[{{"question": "...", "expected": "the correct answer based on knowledge base"}}]'
     )
     raw = llm.ask(prompt)
-    return _parse_support_tests(raw, agent.agent_id)
+    return _parse_support_tests(raw, agent.agent_id, knowledge_base)
 
 
-def _parse_support_tests(raw, agent_id):
+def _parse_support_tests(raw, agent_id, knowledge_base=None):
     try:
         text = raw.strip()
         if text.startswith("```"):
@@ -99,21 +99,75 @@ def _parse_support_tests(raw, agent_id):
         result = []
         for t in tests:
             if "question" in t and "expected" in t:
+                fact_checks = []
+                if knowledge_base:
+                    fact_checks = _generate_fact_checks(
+                        str(t["question"]), str(t["expected"]), knowledge_base)
                 result.append({
                     "question": str(t["question"]),
                     "expected": str(t["expected"]),
                     "generated_by": agent_id,
+                    "fact_checks": fact_checks,
                 })
         return result if result else _fallback_support_tests(agent_id)
     except (json.JSONDecodeError, KeyError):
         return _fallback_support_tests(agent_id)
 
 
+def _generate_fact_checks(question, expected, knowledge_base):
+    prompt = (
+        "You are creating boolean checks for scoring a customer support answer.\n\n"
+        f"KNOWLEDGE BASE:\n{knowledge_base}\n\n"
+        f"Question: {question}\n"
+        f"Expected answer: {expected}\n\n"
+        "Extract boolean checks that verify the actual answer is correct. Each check\n"
+        "should be something an LLM can answer YES or NO about the actual output.\n\n"
+        "For each check provide:\n"
+        '- "description": a statement to verify (phrased for YES/NO evaluation)\n'
+        '- "keywords": list of specific substrings that confirm this check.\n'
+        '  Use numbers, technical terms, specific phrases. Lowercase. Empty list []\n'
+        '  if keyword matching is unreliable.\n'
+        '- "weight": 1 (supporting detail), 2 (key requirement), or 3 (critical)\n\n'
+        "RULES:\n"
+        "- Extract checks ONLY from the expected output. Do not invent extras.\n"
+        "- Use weight 3 for at most 1-2 checks (the core requirement).\n"
+        "- Keep keyword lists short (2-4 items).\n\n"
+        "Return ONLY a JSON array. No markdown."
+    )
+    raw = llm.ask(prompt)
+    try:
+        text = raw.strip()
+        if text.startswith("```"):
+            lines = text.splitlines()
+            text = "\n".join(lines[1:-1])
+        checks = json.loads(text)
+        if not isinstance(checks, list):
+            return []
+        result = []
+        for c in checks:
+            if not isinstance(c, dict) or "description" not in c:
+                continue
+            result.append({
+                "description": str(c["description"]),
+                "keywords": [str(k) for k in c.get("keywords", [])],
+                "weight": max(1, min(3, int(c.get("weight", 1)))),
+            })
+        return result
+    except (json.JSONDecodeError, KeyError, ValueError, TypeError):
+        return []
+
+
 def _fallback_support_tests(agent_id):
     return [
         {"question": "If I'm on Personal and need to upload a 15GB file, what are my options?",
          "expected": "You would need to upgrade to Pro or Enterprise, as large files over 10GB are only supported on those plans.",
-         "generated_by": agent_id},
+         "generated_by": agent_id,
+         "fact_checks": [
+             {"description": "Mentions upgrading to Pro or Enterprise",
+              "keywords": ["pro", "enterprise"], "weight": 3},
+             {"description": "Mentions the 10GB file size limit on Personal",
+              "keywords": ["10gb", "10 gb"], "weight": 2},
+         ]},
     ]
 
 

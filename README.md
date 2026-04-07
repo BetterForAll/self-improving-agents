@@ -30,13 +30,13 @@ and proposing new ones.
   on email validation's original tests, but dropped to 58-62% on Arena Loop's
   adversarial suite. Arena Loop held at 84%. The solutions that looked
   perfect were brittle.
-- **LLM-as-judge scores are unreliable without averaging** -- a single judge
-  call can swing 30+ points for the same solution. Adding JUDGE_RUNS=3
-  (averaging 3 judge calls per evaluation) stabilized scores and let
-  HyperAgent climb steadily instead of getting stuck on a noisy ceiling.
 - **Feedback Loop is the best value** -- highest score on snake (31.1),
-  strong on support, at a fraction of Arena Loop's cost ($0.07 vs $0.40
-  per task)
+  competitive on support (72.86), at a fraction of Arena Loop's cost
+  ($0.03 vs $0.63 per task)
+- **Arena Loop builds robustness** -- scored 78.16 on support against 28
+  adversarial questions (vs 10 original), climbing every round as the
+  test suite grew. On the same 10 questions, Feedback Loop (74.67) and
+  Arena Loop (70.67) are within scoring noise of each other.
 - **Each level has its sweet spot** -- simple tasks need simple agents (Level 1),
   quality tasks need structured feedback (Level 2), and robustness against
   unseen edge cases needs adversarial testing (Level 4)

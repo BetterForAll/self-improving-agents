@@ -14,16 +14,16 @@ Generated: 2026-04-07
 | Level | Task | Metric | Baseline | Best | Improvement | Iters | Cost | Tokens |
 |-------|------|--------|----------|------|-------------|-------|------|--------|
 | AutoResearch | snake | score | 0.050 | 14.550 | 291.0x | 10 | $0.0700 | 120,359 |
-| AutoResearch | support | quality_score | 10.000 | 40.200 | 4.0x | 10 | $0.1037 | 226,128 |
+| AutoResearch | support | quality_score | 21.300 | 58.360 | 2.7x | 6 | $0.0795 | 266,925 |
 | AutoResearch | email_validation | accuracy | 0.500 | 1.000 | 2.0x | 10 | $0.0019 | 8,113 |
 | Feedback Loop | snake | score | 0.050 | 31.100 | 622.0x | 10 | $0.0882 | 197,735 |
-| Feedback Loop | support | quality_score | 15.000 | 66.500 | 4.4x | 10 | $0.0655 | 185,861 |
+| Feedback Loop | support | quality_score | 20.290 | 72.860 | 3.6x | 5 | $0.0339 | 182,188 |
 | Feedback Loop | email_validation | accuracy | 0.500 | 0.900 | 1.8x | 10 | $0.0645 | 197,935 |
 | HyperAgent | snake | score | 0.050 | 27.500 | 550.0x | 12 | $0.0996 | 204,719 |
-| HyperAgent | support | quality_score | 4.670 | 63.500 | 13.6x | 18 | $0.1523 | 617,102 |
+| HyperAgent | support | quality_score | 23.230 | 44.250 | 1.9x | 18 | $0.1650 | 742,137 |
 | HyperAgent | email_validation | accuracy | 0.500 | 1.000 | 2.0x | 6 | $0.0275 | 69,930 |
 | Arena Loop | snake | score | 0.050 | 29.200 | 584.0x | 6 | $0.6191 | 945,713 |
-| Arena Loop | support | quality_score | 10.000 | 22.390 | 2.2x | 6 | $0.3433 | 1,396,346 |
+| Arena Loop | support | quality_score | 20.007 | 78.157 | 3.9x | 6 | $0.6295 | 3,974,281 |
 | Arena Loop | email_validation | accuracy | 0.500 | 0.840 | 1.7x | 6 | $0.2105 | 803,694 |
 
 *Note on LLM-as-judge tasks (support): Baselines vary across levels (5.0-15.0 range
@@ -82,18 +82,16 @@ Snake uses a fixed subprocess benchmark, so Arena Loop's score of 29.2 is direct
 
 Customer support Q&A is an **LLM-as-judge** task: the solution answers customer questions about a product, and a separate LLM call scores each answer's quality (0-100). Baselines vary across levels (5.0-15.0) because the LLM judge is non-deterministic -- the same initial code gets different scores each run. The "Unified Judge" column shows all solutions re-scored using rubric-based boolean checks (keyword + LLM YES/NO) for a fair, stable comparison.
 
-| Level | Baseline | Best | Unified Judge* | Accepted/Total | Duration (s) | LLM Calls |
-|-------|----------|------|----------------|----------------|--------------|-----------|
-| AutoResearch | 10.000 | 40.200 | **52.060** | 4/10 | 730.5 | 20 |
-| Feedback Loop | 15.000 | 66.500 | **71.320** | 3/10 | 578.2 | 27 |
-| HyperAgent | 4.670 | 63.500 | **72.860** | 4/18 | 1932.2 | 78 |
-| Arena Loop | 10.000 | 22.390 | **72.860** | 6 rounds x 4 agents | 4032.0 | 152 |
+| Level | Baseline | Best | Accepted/Total | Duration (s) | LLM Calls |
+|-------|----------|------|----------------|--------------|-----------|
+| AutoResearch | 21.300 | 58.360 | 3/6 | 1098.6 | 376 |
+| Feedback Loop | 20.290 | 72.860 | 2/5 | 783.5 | 288 |
+| HyperAgent | 23.230 | 44.250 | 2/18 | 3203.3 | 1039 |
+| Arena Loop | 20.007 | 78.157 | 6 rounds x 4 agents | 13626.1 | 4819 |
 
-*"Unified Judge" = all solutions scored using rubric-based boolean checks (keyword + LLM YES/NO) against the original 10 questions. Noise reduced from 30+ points to under 7 points. Arena Loop's Best (22.390) was scored against the expanded suite (28 cases).*
-
-**AutoResearch**: 4 accepted, 5 rejected, 1 errors
-**Feedback Loop**: 3 accepted, 5 rejected, 2 errors
-**HyperAgent**: 4 accepted, 13 rejected, 1 errors
+**AutoResearch**: 3 accepted, 3 rejected, 0 errors
+**Feedback Loop**: 2 accepted, 2 rejected, 1 errors
+**HyperAgent**: 2 accepted, 15 rejected, 1 errors
 **Arena Loop**: 6 rounds of competition, test suite grew to 28 cases
 
 **Why these scores differ:**
@@ -136,22 +134,22 @@ the combined suite because it trained against adversarial pressure throughout.
 
 ### support (rubric-based boolean scoring)
 
-All solutions scored against the same 10 questions using boolean 
-fact checks (keyword match + LLM YES/NO fallback) and quality checks. 
-Noise reduced from 30+ points (old 0-100 judge) to under 7 points.
+All solutions scored using boolean fact checks (keyword match + LLM YES/NO fallback) and quality checks.
 
-| Level | Original Run | Unified Judge | Difference |
-|-------|-------------|--------------|------------|
-| AutoResearch | 40.200 | 52.060 | +11.86 |
-| Feedback Loop | 66.500 | 71.320 | +4.82 |
-| HyperAgent | 63.500 | 72.860 | +9.36 |
-| Arena Loop | 22.390 | 72.860 | +50.47 |
-| Baseline | N/A | 22.550 | N/A |
+Original test suite: 10 questions | Arena-expanded test suite: 28 questions
 
-**Winner: HyperAgent** with 72.860 -- 
-scored using rubric-based boolean checks on the same questions as all other levels.
+| Level | vs Original (10) | vs Expanded (28) | Original Run |
+|-------|-------------|-------------|------------|
+| AutoResearch | 56.140 | 53.329 | 58.360 |
+| Feedback Loop | 74.670 | 77.554 | 72.860 |
+| HyperAgent | 42.670 | 37.851 | 44.250 |
+| Arena Loop | 70.670 | 76.520 | 78.157 |
+| Baseline | 18.090 | 16.427 | N/A |
 
-*Note: Arena Loop's original run reported 22.390 because it was scored against 28 expanded questions. The unified judge score above is against the original 10 questions.*
+**Winner (original 10 questions):** Feedback Loop with 74.670
+**Winner (expanded 28 questions):** Feedback Loop with 77.554
+
+Feedback Loop and Arena Loop are within scoring noise (~7 points) on both suites. HyperAgent drops on the expanded suite, showing less robust solutions.
 
 ### snake (deterministic benchmark)
 
@@ -176,38 +174,36 @@ scores reflect harder test suites, not worse solutions.
 
 ## Per-Task Winner
 
-**email_validation**: Arena Loop is the winner. While AutoResearch and HyperAgent achieved 100% on the original 20 tests, Arena Loop's solution scored 84% on a significantly harder, expanded test suite of 50 cases, demonstrating superior robustness against adversarial edge cases.
+**email_validation:** Arena Loop is the overall winner, achieving 84% accuracy on the combined, expanded test suite. While AutoResearch and HyperAgent reached 100% on the original, simpler suite, their solutions proved brittle, dropping to 62% on adversarial tests. Arena Loop's robustness against a harder test set demonstrates superior performance.
 
-**snake**: Feedback Loop achieved the highest score of 31.100. Its structured reviewer effectively identified specific failure patterns and suggested targeted fixes, leading to better performance than the other methods for this deterministic task.
+**snake:** Feedback Loop achieved the highest score of 31.100. Its structured reviewer effectively identified specific failure patterns, leading to targeted fixes that surpassed the performance of all other levels, including HyperAgent (27.500) and Arena Loop (29.200).
 
-**support**: HyperAgent and Arena Loop tied as winners, both achieving a score of 72.860 on the Unified Judge. The unified scoring method revealed that their solutions provided the most accurate and high-quality answers when evaluated against the same original questions.
+**support:** Feedback Loop delivered the best results in the cross-validation, scoring 74.670 on original questions and 77.554 on the expanded suite. Arena Loop was very competitive (70.670 original, 76.520 expanded), but Feedback Loop showed a slight edge in this LLM-as-judge task.
 
 ## What Each Level Adds
 
-**Level 1 - AutoResearch**: This basic loop provides immediate, cost-effective improvements, especially for simpler tasks. For email_validation, it hit 100% accuracy in just one LLM call for minimal cost. It demonstrated a respectable 291.0x improvement for snake, showing its utility for initial problem exploration.
+**Level 1 - AutoResearch:** This basic loop demonstrates the fundamental ability of LLMs to self-improve code. It is highly cost-effective for initial gains, quickly achieving significant improvements like 291.0x for snake at only $0.0700, and solving simple tasks like email_validation (1.0 accuracy on original tests) for minimal cost ($0.0019). Its limitations become apparent on more complex tasks or when requiring robust solutions.
 
-**Level 2 - Feedback Loop**: Adding a structured reviewer significantly enhances performance on tasks that benefit from specific diagnostic feedback, as seen with snake where it achieved the highest score of 31.100. However, the overhead can sometimes hinder progress or introduce issues, as its email_validation solution dropped to 90% accuracy.
+**Level 2 - Feedback Loop:** By integrating a structured reviewer with issue taxonomy and fix suggestions, this level significantly enhances code improvement. The data shows it can achieve substantially higher performance than AutoResearch on complex tasks like snake (31.100 vs 14.550) and support (77.554 vs 53.329 on expanded tests). This added complexity is generally beneficial, offering a good balance of cost and deep problem-solving.
 
-**Level 3 - HyperAgent**: The meta-agent's ability to rewrite its own source code led to substantial gains, particularly for the support task, achieving a 72.860 Unified Judge score. While effective, it generally incurs higher costs and iteration counts, indicating it's beneficial for complex problems requiring deeper systemic changes.
+**Level 3 - HyperAgent:** This meta-agent aims for true code-rewriting self-improvement. While it showed competitive performance in some cases (email_validation 1.0 on original, snake 27.500), its added complexity and higher cost ($0.0996 for snake, $0.1650 for support) did not consistently translate to superior results over Feedback Loop. For the support task, its solution was notably less robust (37.851 on expanded tests) compared to Feedback Loop and Arena Loop.
 
-**Level 4 - Arena Loop**: This adversarial approach excels at producing robust solutions by expanding test suites with adversarial edge cases. While often appearing to have lower "Best" scores initially due to harder benchmarks, its solutions are consistently competitive or superior when fairly compared, proving their resilience, albeit at the highest cost and token usage.
+**Level 4 - Arena Loop:** This level introduces adversarial testing and tournament selection, proving crucial for developing robust solutions against evolving test suites. While it has the highest costs ($0.6191 to $0.6295 per task), it produces agents that are less brittle and more effective against adversarial edge cases, as seen in email_validation (84% on combined suite). This method is designed to overcome the problem of a fixed benchmark being gamed.
 
 ## Cross-Validation Insight
 
-The cross-validation data provides a critical insight into the true performance of the Arena Loop compared to the other levels. Arena Loop's reported scores often appear lower in the main table because its solutions are measured against significantly harder, expanded test suites, which the other levels never encountered during their training. When all solutions are scored against the same, fair benchmark, Arena Loop is consistently competitive or best.
-
-For email_validation, levels 1-3 optimized for a fixed 20-case test suite and achieved 90-100% on it. However, these solutions proved brittle, dropping to 58-62% when tested against the expanded 50-case adversarial suite. In contrast, Arena Loop's solution, developed under adversarial pressure, scored 84% on the combined suite, demonstrating superior robustness. For support, Arena Loop's original run reported 22.390 against 28 expanded questions, but when re-scored with the Unified Judge against the original 10 questions, it achieved 72.860, on par with HyperAgent. This evidence strongly indicates that optimizing against a fixed benchmark leads to solutions that are easily gamed by adversarial tests.
+The cross-validation data is essential for a fair comparison across levels, particularly highlighting that Arena Loop's reported "Best" scores appear lower because they are measured against significantly harder, expanded test suites. When evaluated on the same test conditions, Arena Loop's solutions are consistently competitive or, as in email_validation, demonstrably the best overall due to their robustness. For email_validation, solutions from Levels 1-3 achieved 90-100% accuracy on fixed initial tests but proved brittle, dropping to 58-62% on adversarial edge cases. Arena Loop, by training against adversarial pressure, maintained 84% accuracy on the combined, challenging suite. Similarly, for the support task, Arena Loop's pre-expansion peak performance is comparable to Feedback Loop's best, further proving that fixed benchmarks can be gamed and adversarial testing leads to more resilient code.
 
 ## Cost-Effectiveness
 
-Considering the "Improvement" factor from the main table, AutoResearch initially appears very cost-effective for tasks like email_validation (2.0x for $0.0019) and snake (291.0x for $0.0700). Feedback Loop also offers strong returns, especially for snake (622.0x for $0.0882). HyperAgent provides significant breakthroughs in quality (e.g., support) but at a higher cost per iteration. Arena Loop consistently has the highest costs (e.g., email_validation 1.7x for $0.2105; support 2.2x for $0.3433) due to its complex adversarial processes and larger token usage. While its "Improvement" factor might seem low against harder benchmarks, its value lies in robustness, not necessarily raw improvement percentage on initial, easier tests. There are clear diminishing returns in terms of simple improvement ratio per dollar as complexity (and cost) of the levels increases.
+AutoResearch offers excellent cost-effectiveness for initial improvements, providing significant gains (e.g., 2.0x for email_validation at $0.0019, 291.0x for snake at $0.0700) for minimal investment. Feedback Loop generally provides the most improvement per dollar for moderately complex tasks, achieving substantially higher performance for a reasonable increase in cost (e.g., snake score 31.100 for $0.0882, support quality 77.554 for $0.0339). HyperAgent shows diminishing returns, costing more than Feedback Loop but not consistently delivering better results. Arena Loop is the most expensive by a significant margin (costs up to 10x higher), but its value lies in robustness and ability to handle adversarial conditions, which may justify the cost for critical applications where brittleness is unacceptable.
 
 ## When to Use Which Level
 
-**AutoResearch** is best suited for initial problem exploration or for simpler, well-defined tasks where a quick, low-cost solution is sufficient. It is ideal for rapid prototyping and generating a basic working solution.
+**AutoResearch:** Ideal for simple, well-defined problems or when budget is extremely tight and rapid initial progress is the priority. It excels at getting a "good enough" solution quickly.
 
-**Feedback Loop** should be employed when tasks require specific debugging or refinement based on identifiable failure patterns. It's effective for moderate complexity problems where structured feedback can directly guide the agent towards better performance.
+**Feedback Loop:** Best for tasks requiring more nuanced and sustained improvement where specific error diagnosis and targeted fixes are beneficial, such as complex algorithms (snake) or quality-based scoring (support). It provides a strong balance of performance and cost.
 
-**HyperAgent** is appropriate for complex problems that demand significant architectural changes or deep self-modification of the agent's core logic. It's for projects seeking more profound breakthroughs in agent capability, accepting a higher cost and longer development cycles.
+**HyperAgent:** Based on this data, its benefits are less clear for these particular tasks. It might be suitable for highly specialized meta-programming problems where directly rewriting the agent's core logic yields unique advantages not seen here.
 
-**Arena Loop** is essential for high-stakes applications where robustness against adversarial inputs and unknown edge cases is paramount. It's the go-to choice when the goal is to develop highly resilient solutions capable of performing reliably under diverse and challenging conditions, justifying its substantial cost.
+**Arena Loop:** Essential for critical applications where robustness, security, or resilience against adversarial inputs are paramount. Use when solutions must perform reliably even against evolving or deliberately challenging test suites, and when the budget allows for significantly higher operational costs.

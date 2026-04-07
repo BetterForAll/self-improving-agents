@@ -18,6 +18,10 @@ import os
 import sys
 import time
 
+# Force unbuffered output so logs are visible in real time when piped
+sys.stdout.reconfigure(line_buffering=True)
+sys.stderr.reconfigure(line_buffering=True)
+
 DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(DIR, ".."))
 

@@ -1,34 +1,40 @@
 {
   "test_suite_size": 10,
+  "expanded_suite_size": 28,
   "scoring_method": "rubric",
   "judge_model": "gemini-2.5-flash",
   "scores": {
     "autoresearch": {
       "name": "AutoResearch",
-      "score": 52.06
+      "score": 56.14,
+      "expanded_score": 53.32892857142857
     },
     "feedback-loop": {
       "name": "Feedback Loop",
-      "score": 71.32
+      "score": 74.67,
+      "expanded_score": 77.55392857142859
     },
     "hyperagent": {
       "name": "HyperAgent",
-      "score": 72.86
+      "score": 42.67,
+      "expanded_score": 37.85142857142857
     },
     "arena-loop": {
       "name": "Arena Loop",
-      "score": 72.86
+      "score": 70.67,
+      "expanded_score": 76.52035714285715
     },
     "baseline": {
       "name": "Baseline",
-      "score": 22.55
+      "score": 18.09,
+      "expanded_score": 16.426785714285714
     }
   },
   "token_usage": {
-    "prompt_tokens": 49821,
-    "completion_tokens": 250,
-    "total_tokens": 134315,
-    "calls": 250
+    "prompt_tokens": 225512,
+    "completion_tokens": 1023,
+    "total_tokens": 581890,
+    "calls": 1023
   },
-  "estimated_cost_usd": 0.0155713
+  "estimated_cost_usd": 0.0702111
 }

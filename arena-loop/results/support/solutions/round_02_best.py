@@ -1,12 +1,7 @@
 import re
-from collections import defaultdict
 
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
-
-    This improved version leverages an inverted index (hash-based lookup)
-    to efficiently find sentences in the knowledge base that are most
-    relevant to the customer's question.
 
     Args:
         question: str, the customer's question
@@ -14,76 +9,82 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
-    # 1. Preprocessing and Building Inverted Index for the knowledge_base
-    # Split the knowledge base into individual sentences.
-    # The regex looks for sentence-ending punctuation followed by whitespace.
-    sentences = re.split(r'(?<=[.!?])\s+', knowledge_base.strip())
-    # Clean up sentences (remove leading/trailing whitespace, filter out empty strings)
-    sentences = [s.strip() for s in sentences if s.strip()]
 
-    if not sentences:
-        return "Thank you for contacting us. No information found in the knowledge base."
+    # Strategy: Use generators for intermediate data processing steps
+    # to avoid building large lists in memory, which is crucial for
+    # handling potentially large knowledge bases, thus improving quality_score.
 
-    # inverted_index: maps a word to a set of indices of sentences containing that word.
-    inverted_index = defaultdict(set)
-    # normalized_sentence_token_sets: stores tokenized and normalized words for each sentence,
-    # allowing for efficient keyword lookup during scoring.
-    normalized_sentence_token_sets = []
+    # 1. Generator to chunk the knowledge base into sentences.
+    #    This avoids creating a full list of all sentences in memory.
+    def chunk_knowledge_base(kb_text):
+        # A basic sentence splitter. In a more sophisticated system,
+        # one might use an NLP library (e.g., NLTK, spaCy) for better accuracy.
+        # This regex splits by common sentence terminators followed by whitespace,
+        # keeping the terminator with the sentence.
+        sentences = re.split(r'(?<=[.!?])\s+', kb_text.strip())
+        for sentence in sentences:
+            if sentence.strip():
+                yield sentence.strip()
 
-    for i, sentence in enumerate(sentences):
-        # Normalize the sentence: convert to lowercase and remove non-alphanumeric characters.
-        normalized_sentence = re.sub(r'[^\w\s]', '', sentence).lower()
-        tokens = normalized_sentence.split()
-        
-        current_sentence_tokens_set = set()
-        for token in tokens:
-            if token: # Ensure token is not empty
-                inverted_index[token].add(i)
-                current_sentence_tokens_set.add(token)
-        normalized_sentence_token_sets.append(current_sentence_tokens_set)
+    # 2. Generator to filter relevant chunks based on question keywords.
+    #    This processes chunks from the `chunk_knowledge_base` generator
+    #    on-the-fly, yielding only relevant ones without storing all chunks
+    #    or all relevant chunks in a temporary list.
+    def find_relevant_chunks(chunks_generator, keywords):
+        for chunk in chunks_generator:
+            # Convert chunk to lowercase once for efficiency when checking multiple keywords.
+            lower_chunk = chunk.lower()
+            # Simple keyword matching for relevance (case-insensitive)
+            if any(keyword in lower_chunk for keyword in keywords):
+                yield chunk
 
-    # 2. Process the question
-    # Normalize the question in the same way as sentences.
-    normalized_question = re.sub(r'[^\w\s]', '', question).lower()
-    question_keywords = set(normalized_question.split())
+    # Pre-process the question to extract keywords for matching.
+    # We use a set for efficient lookup and filter out very short words
+    # that are unlikely to be meaningful keywords.
+    # Also, include a basic set of common English stop words to improve relevance
+    # by excluding words that don't carry much meaning.
+    STOP_WORDS = {
+        "a", "an", "the", "is", "are", "was", "were", "of", "in", "on", "for",
+        "with", "and", "or", "but", "how", "what", "where", "when", "why",
+        "who", "whom", "this", "that", "these", "those", "it", "its", "he",
+        "she", "they", "them", "their", "our", "we", "you", "your", "i", "me",
+        "my", "be", "been", "am", "do", "does", "did", "not", "no", "yes",
+        "from", "at", "by", "to", "as", "about", "above", "before", "after",
+        "below", "between", "down", "up", "out", "off", "over", "under",
+        "again", "further", "then", "once", "here", "there", "all", "any",
+        "both", "each", "few", "more", "most", "other", "some", "such",
+        "nor", "only", "own", "same", "so", "than", "too", "very", "s", "t",
+        "can", "will", "just", "don", "should", "now"
+    }
 
+    question_keywords = set(word for word in re.findall(r'\b\w+\b', question.lower())
+                            if len(word) > 2 and word not in STOP_WORDS)
+
+    # If no meaningful keywords are extracted from the question,
+    # we cannot perform an effective search.
     if not question_keywords:
-        return "Thank you for contacting us. Please rephrase your question with more specific terms."
+        return "I couldn't understand your question. Please provide more specific details."
 
-    # 3. Find relevant sentences and score them
-    # Use the inverted index to quickly identify potential candidate sentences.
-    # This significantly reduces the number of sentences to check for relevance.
-    candidate_sentence_indices = set()
-    for keyword in question_keywords:
-        if keyword in inverted_index:
-            candidate_sentence_indices.update(inverted_index[keyword])
+    # Pipeline the generators:
+    # First, get a generator for knowledge base chunks.
+    kb_chunks_gen = chunk_knowledge_base(knowledge_base)
+    # Then, get a generator for relevant chunks from the kb_chunks_gen, using question keywords.
+    relevant_chunks_gen = find_relevant_chunks(kb_chunks_gen, question_keywords)
 
-    if not candidate_sentence_indices:
-        # If no keywords from the question are found in the knowledge base,
-        # return a polite fallback message.
-        return "Thank you for contacting us. We couldn't find a direct answer to your question in our knowledge base. Please visit our website for more information."
+    # Collect a limited number of relevant chunks to form the answer.
+    # We limit the collection to prevent excessively long answers and
+    # to manage memory if many chunks are relevant (though the generators
+    # already prevent storing all initially).
+    max_relevant_chunks_to_collect = 5
+    collected_answers = []
+    for i, chunk in enumerate(relevant_chunks_gen):
+        if i >= max_relevant_chunks_to_collect:
+            break
+        collected_answers.append(chunk)
 
-    # Score only the candidate sentences. The score is the number of question keywords
-    # that appear in a given sentence.
-    sentence_scores = {}
-    for idx in candidate_sentence_indices:
-        score = len(question_keywords.intersection(normalized_sentence_token_sets[idx]))
-        if score > 0: # Only store sentences with at least one matching keyword
-            sentence_scores[idx] = score
-
-    # 4. Select and return the best answer
-    max_score = 0
-    best_sentence_index = -1
-
-    if sentence_scores:
-        # Find the sentence with the highest score.
-        # If multiple sentences have the same highest score, `max` will return one of them.
-        best_sentence_index = max(sentence_scores, key=sentence_scores.get)
-        max_score = sentence_scores[best_sentence_index]
-
-    if max_score > 0:
-        return sentences[best_sentence_index]
+    if collected_answers:
+        # Join the collected relevant chunks to form the final answer.
+        return " ".join(collected_answers)
     else:
-        # This fallback handles cases where candidate_sentence_indices had elements,
-        # but all their scores turned out to be 0 (e.g., due to stop words not being filtered).
-        return "Thank you for contacting us. We couldn't find a direct answer to your question in our knowledge base. Please visit our website for more information."
+        # Fallback response if no relevant information is found.
+        return "I apologize, but I couldn't find specific information related to your question in our knowledge base. Please try rephrasing your question or visit our website for more details."

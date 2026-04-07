@@ -1,14 +1,7 @@
-import string
 import re
 
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
-
-    This improved version extracts keywords from the question, searches the
-    knowledge base for sentences containing these keywords, and constructs
-    an answer from the most relevant snippets found.
-    It now preserves the original casing of the knowledge base sentences
-    for better readability in the final answer.
 
     Args:
         question: str, the customer's question
@@ -16,92 +9,89 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
-    # 1. Pre-process question to extract relevant keywords
-    question_lower = question.lower()
-    # Remove punctuation from the question
-    question_cleaned = question_lower.translate(str.maketrans('', '', string.punctuation))
-    question_words = set(question_cleaned.split())
-
-    # A basic list of common stop words to filter out noise from keywords
-    stop_words = {"a", "an", "the", "is", "are", "was", "were", "and", "or", "for", "on", "in", "with", 
-                  "how", "what", "where", "when", "why", "can", "could", "may", "might", "do", "does", 
-                  "did", "of", "to", "from", "at", "about", "this", "that", "these", "those", "it", 
-                  "its", "you", "your", "we", "our", "us", "i", "my", "me", "he", "him", "his", "she", 
-                  "her", "hers", "they", "them", "their", "which", "who", "whom", "whose", "if", "then", 
-                  "but", "not", "no", "yes", "please", "thank", "would", "will", "shall", "should", 
-                  "get", "got", "go", "goes", "going", "have", "has", "had", "been", "be", "being", "am"}
+    # Handle invalid or empty question input
+    if not isinstance(question, str) or not question.strip():
+        return "Please provide a valid question."
     
-    # Filter out stop words and keep content words (words longer than or equal to 2 characters)
-    # This change includes short but often important keywords like "PC", "TV", "OS".
-    relevant_question_words = {word for word in question_words if word not in stop_words and len(word) >= 2}
+    # Handle invalid or empty knowledge_base input
+    if not isinstance(knowledge_base, str) or not knowledge_base.strip():
+        return "Thank you for contacting us. We need more information to answer your question."
 
-    # If no relevant keywords are found after filtering, return a generic but slightly more helpful response
-    if not relevant_question_words:
-        return "Thank you for your question. While I couldn't identify specific keywords, please visit our comprehensive FAQ page or contact customer support for more information."
+    question_lower = question.lower()
+    
+    # Split the knowledge base into sentences.
+    # This regex attempts to split on . ? ! followed by a space,
+    # while trying to avoid splitting on decimal points or abbreviations (e.g., U.S.A.).
+    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|!)\s+', knowledge_base)
+    # Filter out any empty strings that might result from splitting
+    sentences = [s.strip() for s in sentences if s.strip()]
 
-    # 2. Pre-process knowledge base: Split into sentences and score them
-    # Split the original knowledge base into sentences to preserve original casing.
-    # The regex splits on '.', '!', '?' followed by a space, keeping the punctuation within the sentence string.
-    original_sentences = re.split(r'(?<=[.!?])\s+', knowledge_base)
-    # Filter out any empty strings that might result from splitting, especially if KB ends with punctuation.
-    original_sentences = [s.strip() for s in original_sentences if s.strip()]
+    # Extract all words from the question, convert to lowercase
+    all_question_words = set(re.findall(r'\b\w+\b', question_lower))
 
-    scored_sentences = []
+    # A basic set of common English stop words.
+    # These words are usually not informative keywords for answering a question.
+    stop_words = {"a", "an", "the", "is", "are", "was", "were", "be", "been", "being", "to", "of", "and", "or",
+                  "in", "on", "at", "for", "with", "from", "by", "about", "what", "which", "who", "whom", "where",
+                  "when", "why", "how", "can", "could", "would", "should", "will", "may", "might", "must", "do",
+                  "does", "did", "have", "has", "had", "not", "no", "don't", "can't", "i", "you", "he", "she",
+                  "it", "we", "they", "me", "him", "her", "us", "them", "my", "your", "his", "its", "our",
+                  "their", "this", "that", "these", "those", "if", "then", "else", "but", "so", "as", "such",
+                  "than", "up", "down", "out", "off", "over", "under", "again", "further", "once", "here",
+                  "there", "all", "any", "both", "each", "few", "more", "most", "other", "some", "same",
+                  "too", "very", "s", "t", "just", "now", "ve", "ll", "d", "m", "re", "y", "am"}
 
-    for original_sentence in original_sentences:
-        # Create a lowercase version of the sentence for keyword comparison
-        sentence_lower = original_sentence.lower() 
-        # Clean the lowercase sentence for word comparison (remove punctuation)
-        sentence_cleaned_for_comparison = sentence_lower.translate(str.maketrans('', '', string.punctuation))
-        # Split the cleaned sentence into a list of words to allow for counting multiple occurrences
-        sentence_word_list = sentence_cleaned_for_comparison.split()
+    # Filter out stop words and single-letter words to get meaningful keywords for matching
+    question_keywords = {word for word in all_question_words if word not in stop_words and len(word) > 1}
+
+    best_sentence = ""
+    max_matches = 0 # Stores the count of matching keywords for the best sentence found
+    best_sentence_len = float('inf') # Stores the length of the best sentence found so far, for tie-breaking
+
+    # If no meaningful keywords can be extracted from the question, it's too generic
+    if not question_keywords:
+        return "Thank you for contacting us. Please provide a more specific question."
+
+    # Iterate through each sentence in the knowledge base to find the most relevant one
+    for sentence in sentences:
+        sentence_lower = sentence.lower()
         
-        score = 0
-        # Calculate a score based on how many relevant question keywords are in the sentence
-        # The score now increases for each occurrence of a relevant keyword,
-        # giving more weight to sentences that mention keywords multiple times.
-        for q_word in relevant_question_words:
-            score += sentence_word_list.count(q_word)
+        # Count how many of the question's keywords appear in the current sentence
+        current_matches = sum(1 for keyword in question_keywords if keyword in sentence_lower)
         
-        if score > 0:  # Only consider sentences that contain at least one matching keyword
-            # Store the score along with the original-cased sentence
-            scored_sentences.append((score, original_sentence))
+        # If the original question (as a phrase) is found within the sentence,
+        # it's a very strong indicator of relevance. Boost its score significantly.
+        if question_lower in sentence_lower:
+             current_matches += len(question_keywords) * 2 # A substantial boost
 
-    # 3. Construct Answer from relevant snippets
-    if not scored_sentences:
-        # If no sentences in the knowledge base contained any relevant keywords
-        return "I apologize, but I couldn't find information directly matching your question in the knowledge base. Please try rephrasing your question or consult our detailed product documentation."
+        current_sentence_stripped = sentence.strip()
+        current_sentence_len = len(current_sentence_stripped)
 
-    # Sort sentences by their score in descending order
-    scored_sentences.sort(key=lambda x: x[0], reverse=True)
+        # Update best_sentence if current sentence has more matches,
+        # OR if it has the same number of matches but is shorter (tie-breaker)
+        if current_matches > max_matches:
+            max_matches = current_matches
+            best_sentence = current_sentence_stripped
+            best_sentence_len = current_sentence_len
+        elif current_matches == max_matches:
+            # Tie-breaking: if scores are equal, prefer the shorter sentence.
+            # This prioritizes more concise answers when relevance is the same.
+            if current_sentence_len < best_sentence_len:
+                best_sentence = current_sentence_stripped
+                best_sentence_len = current_sentence_len
 
-    relevant_snippets = []
-    # Take the top N (e.g., 3) most relevant sentences
-    for score, original_sentence_text in scored_sentences:
-        # Ensure the sentence is not empty after stripping whitespace
-        processed_sentence = original_sentence_text.strip()
-        if not processed_sentence:
-            continue
-        
-        # Capitalize the first letter of the sentence for better readability,
-        # ensuring consistency even if the original sentence started lowercase.
-        if processed_sentence: 
-            processed_sentence = processed_sentence[0].upper() + processed_sentence[1:]
-
-        # Ensure the sentence ends with proper punctuation
-        if not processed_sentence.endswith(('.', '!', '?')):
-            processed_sentence += '.'
-        
-        relevant_snippets.append(processed_sentence)
-        
-        # Limit the number of snippets to avoid overly long answers
-        if len(relevant_snippets) >= 3:
-            break
-
-    if relevant_snippets:
-        # Join the selected snippets to form the final answer
-        # A prefix indicates that the answer is derived from the knowledge base
-        return "Based on our knowledge base: " + " ".join(relevant_snippets)
-    else:
-        # Fallback if, after all processing and filtering, no snippets are left
-        return "I couldn't find a direct answer to your question in the provided knowledge base. Please check our website or contact support."
+    # Determine if the best found sentence is relevant enough to be an answer
+    question_keywords_count = len(question_keywords)
+    
+    # A match is considered good if it meets one of these criteria:
+    # 1. At least 2 relevant keywords are found AND at least half of the question's keywords are matched.
+    #    This prevents returning weak matches for longer questions.
+    # 2. If it's a very specific question with only one primary keyword (e.g., "Pricing?")
+    #    and that single keyword is found.
+    if max_matches > 0:
+        if (max_matches >= 2 and max_matches >= question_keywords_count / 2.0) or \
+           (question_keywords_count == 1 and max_matches == 1):
+            return best_sentence
+            
+    # Fallback to a more informative generic response if no sufficiently relevant answer is found
+    return "Thank you for contacting us. We couldn't find a direct answer in our knowledge base. Please visit our website or contact support for more information."

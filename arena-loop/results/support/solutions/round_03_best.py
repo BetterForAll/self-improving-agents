@@ -1,46 +1,7 @@
 import re
 
-# Define stop words at the module level to avoid re-initialization on every function call.
-# Expanded to include common contractions that regex might treat as single words.
-_STOP_WORDS = {"a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-                  "and", "or", "but", "if", "then", "else", "for", "with", "at", "by",
-                  "of", "on", "in", "to", "from", "up", "down", "out", "off", "over",
-                  "under", "again", "further", "then", "once", "here", "there", "when",
-                  "where", "why", "how", "all", "any", "both", "each", "few", "more",
-                  "most", "other", "some", "such", "no", "nor", "not", "only", "own",
-                  "same", "so", "than", "too", "very", "s", "t", "can", "will", "just",
-                  "don", "should", "now", "what", "which", "who", "whom", "this", "that",
-                  "these", "those", "me", "my", "myself", "we", "our", "ours", "ourselves",
-                  "you", "your", "yours", "yourself", "yourselves", "he", "him", "his",
-                  "himself", "she", "her", "hers", "herself", "it", "its", "itself",
-                  "they", "them", "their", "theirs", "themselves", "i", "you'd", "you'll", "you're", "you've", "we'd", "we'll", "we're", "we've", "it's", "he's", "she's", "they're", "they've", "they'd", "i'm", "i've", "i'd", "i'll"}
-
-def _tokenize_and_filter(text):
-    """
-    Helper function to tokenize text into words, convert to lowercase, and remove
-    common stop words. Returns a set of relevant keywords for efficient lookup.
-    """
-    tokens = set(re.findall(r'\b\w+\b', text.lower()))
-    return tokens - _STOP_WORDS
-
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
-
-    This improved version identifies keywords in the question and attempts to find
-    the most relevant sentence in the knowledge base by counting shared keywords.
-    It leverages built-in string methods, regex for tokenization and sentence
-    splitting, and sets for efficient keyword matching.
-
-    Improvements:
-    1.  **Algorithmic Consistency & Efficiency**: Introduced a `_tokenize_and_filter`
-        helper function to ensure consistent text processing (tokenization, lowercasing,
-        and stop-word removal) for both the question and knowledge base sentences.
-        This leads to smaller, more semantically focused sets for intersection,
-        making the matching process more efficient and accurate.
-    2.  **Reduced Redundancy**: The knowledge base sentences are pre-processed
-        once at the beginning, storing tuples of `(original_sentence, filtered_word_set)`.
-        This avoids repeatedly tokenizing and filtering each sentence's words within the
-        main scoring loop, thus streamlining operations.
 
     Args:
         question: str, the customer's question
@@ -48,47 +9,82 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
-    if not knowledge_base or not question:
-        return "Thank you for contacting us. We could not process your request with the provided information."
 
-    # --- 1. Preprocess Question for Keywords ---
-    # Use the helper to tokenize, lowercase, and filter out stop words from the question.
-    relevant_question_words = _tokenize_and_filter(question)
-    
-    if not relevant_question_words:
-        # If no relevant keywords are found, the question might be too generic.
-        return "Thank you for contacting us. Please provide a more specific question."
+    # Strategy: Use generators for intermediate data processing steps
+    # to avoid building large lists in memory, which is crucial for
+    # handling potentially large knowledge bases, thus improving quality_score.
 
-    # --- 2. Process Knowledge Base and Identify Most Relevant Sentence ---
-    # Split the knowledge base into individual sentences.
-    # The regex uses a positive lookbehind to ensure the delimiter ('.', '?', '!')
-    # is kept as part of the sentence, improving readability.
-    sentences = [s.strip() for s in re.split(r'(?<=[.?!])\s*', knowledge_base) if s.strip()]
-    
-    # Pre-process all knowledge base sentences once using the helper.
-    # Store tuples of (original_sentence, processed_word_set) for efficient access in the scoring loop.
-    processed_kb_sentences = []
-    for original_sentence in sentences:
-        processed_kb_sentences.append((original_sentence, _tokenize_and_filter(original_sentence)))
-    
-    best_match_score = 0
-    best_answer_sentence = None
+    # 1. Generator to chunk the knowledge base into sentences.
+    #    This avoids creating a full list of all sentences in memory.
+    def chunk_knowledge_base(kb_text):
+        # A basic sentence splitter. In a more sophisticated system,
+        # one might use an NLP library (e.g., NLTK, spaCy) for better accuracy.
+        # This regex splits by common sentence terminators followed by whitespace,
+        # keeping the terminator with the sentence.
+        sentences = re.split(r'(?<=[.!?])\s+', kb_text.strip())
+        for sentence in sentences:
+            if sentence.strip():
+                yield sentence.strip()
 
-    for original_sentence, processed_sentence_words in processed_kb_sentences:
-        # Calculate a relevance score: the number of common words between the
-        # relevant question keywords and the *processed* sentence's words.
-        # Set intersection between two stop-word-filtered sets is efficient and focused.
-        current_score = len(relevant_question_words.intersection(processed_sentence_words))
+    # 2. Generator to filter relevant chunks based on question keywords.
+    #    This processes chunks from the `chunk_knowledge_base` generator
+    #    on-the-fly, yielding only relevant ones without storing all chunks
+    #    or all relevant chunks in a temporary list.
+    def find_relevant_chunks(chunks_generator, keywords):
+        for chunk in chunks_generator:
+            # Convert chunk to lowercase once for efficiency when checking multiple keywords.
+            lower_chunk = chunk.lower()
+            # Simple keyword matching for relevance (case-insensitive)
+            if any(keyword in lower_chunk for keyword in keywords):
+                yield chunk
 
-        # Update the best match if the current sentence has a higher score.
-        if current_score > best_match_score:
-            best_match_score = current_score
-            best_answer_sentence = original_sentence # Store the original (stripped) sentence
+    # Pre-process the question to extract keywords for matching.
+    # We use a set for efficient lookup and filter out very short words
+    # that are unlikely to be meaningful keywords.
+    # Also, include a basic set of common English stop words to improve relevance
+    # by excluding words that don't carry much meaning.
+    STOP_WORDS = {
+        "a", "an", "the", "is", "are", "was", "were", "of", "in", "on", "for",
+        "with", "and", "or", "but", "how", "what", "where", "when", "why",
+        "who", "whom", "this", "that", "these", "those", "it", "its", "he",
+        "she", "they", "them", "their", "our", "we", "you", "your", "i", "me",
+        "my", "be", "been", "am", "do", "does", "did", "not", "no", "yes",
+        "from", "at", "by", "to", "as", "about", "above", "before", "after",
+        "below", "between", "down", "up", "out", "off", "over", "under",
+        "again", "further", "then", "once", "here", "there", "all", "any",
+        "both", "each", "few", "more", "most", "other", "some", "such",
+        "nor", "only", "own", "same", "so", "than", "too", "very", "s", "t",
+        "can", "will", "just", "don", "should", "now"
+    }
 
-    # --- 3. Formulate the Answer ---
-    if best_answer_sentence and best_match_score > 0:
-        # If a relevant sentence was found with at least one matching keyword, return it.
-        return best_answer_sentence
+    question_keywords = set(word for word in re.findall(r'\b\w+\b', question.lower())
+                            if len(word) > 2 and word not in STOP_WORDS)
+
+    # If no meaningful keywords are extracted from the question,
+    # we cannot perform an effective search.
+    if not question_keywords:
+        return "I couldn't understand your question. Please provide more specific details."
+
+    # Pipeline the generators:
+    # First, get a generator for knowledge base chunks.
+    kb_chunks_gen = chunk_knowledge_base(knowledge_base)
+    # Then, get a generator for relevant chunks from the kb_chunks_gen, using question keywords.
+    relevant_chunks_gen = find_relevant_chunks(kb_chunks_gen, question_keywords)
+
+    # Collect a limited number of relevant chunks to form the answer.
+    # We limit the collection to prevent excessively long answers and
+    # to manage memory if many chunks are relevant (though the generators
+    # already prevent storing all initially).
+    max_relevant_chunks_to_collect = 5
+    collected_answers = []
+    for i, chunk in enumerate(relevant_chunks_gen):
+        if i >= max_relevant_chunks_to_collect:
+            break
+        collected_answers.append(chunk)
+
+    if collected_answers:
+        # Join the collected relevant chunks to form the final answer.
+        return " ".join(collected_answers)
     else:
-        # Fallback response if no relevant sentence could be identified.
-        return "Thank you for contacting us. We couldn't find a direct answer in our knowledge base. Please visit our website for more information."
+        # Fallback response if no relevant information is found.
+        return "I apologize, but I couldn't find specific information related to your question in our knowledge base. Please try rephrasing your question or visit our website for more details."

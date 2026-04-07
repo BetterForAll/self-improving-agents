@@ -1,0 +1,794 @@
+[
+  {
+    "question": "How much does it cost?",
+    "expected": "Personal is $9/month or $89/year, Pro is $29/month or $290/year, Enterprise is $79/month per seat with annual billing only."
+  },
+  {
+    "question": "Can I try it for free?",
+    "expected": "Yes, there is a 14-day free trial on any plan, no credit card required."
+  },
+  {
+    "question": "Does it work on my iPhone?",
+    "expected": "Yes, CloudSync Pro supports iOS along with Windows, Mac, Linux, Android, and web browsers."
+  },
+  {
+    "question": "I want to cancel, can I get a refund?",
+    "expected": "You can cancel anytime. Within the first 30 days you get a prorated refund. After 30 days there is no refund but you keep access until the end of your billing period."
+  },
+  {
+    "question": "How much storage do I get on the Pro plan?",
+    "expected": "The Pro plan includes 500GB of storage."
+  },
+  {
+    "question": "What happens if two people edit the same file?",
+    "expected": "The newest edit wins and the older version is automatically saved to version history so nothing is lost."
+  },
+  {
+    "question": "Can I access my files without internet?",
+    "expected": "Yes, files marked as available offline can be accessed without an internet connection."
+  },
+  {
+    "question": "Is my data encrypted?",
+    "expected": "Yes, CloudSync Pro uses end-to-end encryption with AES-256."
+  },
+  {
+    "question": "How fast is your support response?",
+    "expected": "It depends on your plan: Personal gets email within 24 hours, Pro gets email and chat within 4 hours, Enterprise gets email, chat, phone, and a dedicated account manager."
+  },
+  {
+    "question": "Can I upload a 15GB video file?",
+    "expected": "Large files over 10GB are supported on Pro and Enterprise plans only. If you are on Personal, you would need to upgrade."
+  },
+  {
+    "question": "If I have a 15GB file, can I sync it using the Personal plan?",
+    "expected": "No, large files (>10GB) are supported on Pro/Enterprise only. The Personal plan does not support syncing files of that size.",
+    "generated_by": "TA2",
+    "fact_checks": [
+      {
+        "description": "The answer explicitly states 'No'.",
+        "keywords": [
+          "no"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The answer explains that files larger than 10GB are supported only on Pro/Enterprise plans.",
+        "keywords": [
+          ">10gb",
+          "pro/enterprise",
+          "only"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The answer states that the Personal plan does not support syncing files of the given size.",
+        "keywords": [
+          "personal plan",
+          "not support",
+          "files of that size"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "I bought the Pro plan on January 1st and cancelled on February 5th. Will I get a refund?",
+    "expected": "No, you will not receive a refund. You cancelled after more than 30 days (January 1st to February 5th is 35 days). Prorated refunds are only available within the first 30 days. After 30 days, there is no refund, and access continues until the end of the billing period.",
+    "generated_by": "TA2",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that the customer will not receive a refund?",
+        "keywords": [
+          "no",
+          "not receive refund"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer explain that the cancellation occurred after more than 30 days?",
+        "keywords": [
+          "after more than 30 days",
+          "35 days"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer correctly state that January 1st to February 5th is 35 days?",
+        "keywords": [
+          "january 1st",
+          "february 5th",
+          "35 days"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer mention that prorated refunds are only available within the first 30 days?",
+        "keywords": [
+          "prorated refunds",
+          "within first 30 days"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer clarify that after 30 days, there is no refund?",
+        "keywords": [
+          "after 30 days",
+          "no refund"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer state that access continues until the end of the billing period after 30 days?",
+        "keywords": [
+          "access continues",
+          "end of billing period"
+        ],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "How much cheaper is it to pay for the Pro plan annually compared to paying monthly for a year?",
+    "expected": "The Pro plan costs $29/month or $290/year. Paying monthly for a year would cost $29 multiplied by 12 months, totaling $348. The annual plan costs $290. Therefore, paying annually saves you $58 per year ($348 - $290).",
+    "generated_by": "TA2",
+    "fact_checks": [
+      {
+        "description": "The answer explicitly states the monthly cost of the Pro plan is $29.",
+        "keywords": [
+          "$29/month",
+          "pro plan"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "The answer explicitly states the annual cost of the Pro plan is $290.",
+        "keywords": [
+          "$290/year",
+          "pro plan"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "The answer calculates the total cost of paying monthly for a year as $348.",
+        "keywords": [
+          "$348",
+          "29 multiplied by 12",
+          "monthly for a year"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The answer states that paying annually saves $58 per year.",
+        "keywords": [
+          "$58",
+          "saves",
+          "per year"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The calculation ($348 - $290) is shown to derive the savings.",
+        "keywords": [
+          "$348 - $290",
+          "calculation"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "How much can I save annually if I choose the yearly billing for the Pro plan instead of paying monthly?",
+    "expected": "The Pro plan costs $29 per month or $290 per year. If you pay monthly for a year, it would cost $29 x 12 = $348. Therefore, you would save $348 - $290 = $58 per year by opting for annual billing on the Pro plan.",
+    "generated_by": "TA1",
+    "fact_checks": [
+      {
+        "description": "Does the answer correctly state the monthly price for the Pro plan?",
+        "keywords": [
+          "$29 per month",
+          "29 per month",
+          "$29/month"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer correctly state the annual price for the Pro plan?",
+        "keywords": [
+          "$290 per year",
+          "290 per year",
+          "$290/year"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer correctly calculate the total cost if paying for the Pro plan monthly for an entire year?",
+        "keywords": [
+          "$29 x 12",
+          "348",
+          "29 * 12"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer correctly calculate the final annual savings by choosing the yearly billing for the Pro plan?",
+        "keywords": [
+          "$348 - $290",
+          "58",
+          "$58 per year"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer explicitly mention that the calculation is for the 'Pro plan'?",
+        "keywords": [
+          "pro plan",
+          "pro"
+        ],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "Can I sync a single file that is 15GB in size if I am subscribed to the Personal plan, given that it offers 50GB of storage?",
+    "expected": "No, you cannot sync a single 15GB file on the Personal plan, even though it provides 50GB of storage. Large files (over 10GB) are only supported on the Pro and Enterprise plans.",
+    "generated_by": "TA1",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that syncing a 15GB file on the Personal plan is not possible?",
+        "keywords": [
+          "no",
+          "cannot sync",
+          "personal plan"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer specify that large files are only supported on the Pro and Enterprise plans?",
+        "keywords": [
+          "large files",
+          "pro and enterprise plans",
+          "only supported"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer mention that files over 10GB are considered large files?",
+        "keywords": [
+          "over 10gb",
+          "10gb"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer acknowledge the Personal plan's 50GB storage limit but clarifies its irrelevance to the 15GB file size issue?",
+        "keywords": [
+          "50gb of storage",
+          "even though",
+          "storage"
+        ],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "I subscribed to the Pro plan 45 days ago and now need to cancel my subscription. Will I be eligible for a prorated refund?",
+    "expected": "No, you will not receive a prorated refund. CloudSync Pro's policy states that prorated refunds are only available within the first 30 days of service. Since you subscribed 45 days ago, you will retain access to your plan until the end of your current billing period, but no refund will be issued.",
+    "generated_by": "TA1",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that the user will not receive a prorated refund?",
+        "keywords": [
+          "no",
+          "prorated refund",
+          "not receive"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer explain that prorated refunds are only available within the first 30 days of service?",
+        "keywords": [
+          "prorated refunds",
+          "only available",
+          "first 30 days"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer explicitly reference the user having subscribed 45 days ago as the reason the refund policy does not apply?",
+        "keywords": [
+          "45 days ago",
+          "subscribed 45 days ago"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer state that the user will retain access to their plan until the end of their current billing period?",
+        "keywords": [
+          "retain access",
+          "end of current billing period"
+        ],
+        "weight": 1
+      },
+      {
+        "description": "Does the answer clearly conclude that no refund will be issued?",
+        "keywords": [
+          "no refund will be issued"
+        ],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "I need to store about 200GB of data. Which yearly subscription option would accommodate this, and how much would it cost?",
+    "expected": "For 200GB of data, the Pro plan would be suitable as it offers 500GB of storage. The Pro plan costs $290 per year.",
+    "generated_by": "TATA3_1",
+    "fact_checks": [
+      {
+        "description": "Does the answer recommend the 'Pro' plan?",
+        "keywords": [
+          "pro plan",
+          "pro"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer state that the recommended plan offers 500GB of storage?",
+        "keywords": [
+          "500gb",
+          "storage"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer state the yearly cost for the recommended plan is $290?",
+        "keywords": [
+          "$290",
+          "per year"
+        ],
+        "weight": 3
+      }
+    ]
+  },
+  {
+    "question": "Can my team manage shared files with different access levels, and is there a limit to how many versions of a file we can keep?",
+    "expected": "Yes, Team folders with permission controls are available on Pro and Enterprise plans. Version history is unlimited for Pro/Enterprise plans, while the Personal plan keeps 30 days of history.",
+    "generated_by": "TATA3_1",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that Team folders with permission controls are available?",
+        "keywords": [
+          "team folders",
+          "permission controls"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer specify that Team folders with permission controls are available on Pro and Enterprise plans?",
+        "keywords": [
+          "pro",
+          "enterprise",
+          "plans"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer mention 'Version history' regarding file version limits?",
+        "keywords": [
+          "version history"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer state that version history is unlimited for Pro/Enterprise plans?",
+        "keywords": [
+          "unlimited",
+          "pro",
+          "enterprise"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer specify that the Personal plan keeps 30 days of version history?",
+        "keywords": [
+          "30 days",
+          "personal"
+        ],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "If I cancel my subscription after two months, will I get any money back?",
+    "expected": "If you cancel after two months (60 days), you will not receive a refund, as prorated refunds are only provided within the first 30 days. Your access will continue until the end of your current billing period.",
+    "generated_by": "TATA3_1",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that the customer will not receive a refund if they cancel after two months?",
+        "keywords": [
+          "not receive a refund",
+          "two months",
+          "60 days"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer clarify that prorated refunds are only provided within the first 30 days?",
+        "keywords": [
+          "prorated refunds",
+          "first 30 days"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer mention that access will continue until the end of the current billing period?",
+        "keywords": [
+          "access will continue",
+          "end of your current billing period"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "I have a Personal plan. Can I share files with a team and keep all my old file versions?",
+    "expected": "No, team folders with permission controls are a feature available only on Pro or Enterprise plans. For your Personal plan, version history is retained for 30 days, not unlimited.",
+    "generated_by": "TATA1_1",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that team folders with permission controls are not available on the Personal plan?",
+        "keywords": [
+          "no",
+          "team folders",
+          "permission controls",
+          "pro or enterprise plans"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer state that version history for the Personal plan is limited to 30 days and not unlimited?",
+        "keywords": [
+          "personal plan",
+          "version history",
+          "30 days",
+          "not unlimited"
+        ],
+        "weight": 3
+      }
+    ]
+  },
+  {
+    "question": "I need 10TB of cloud storage and dedicated phone support for my business. What plan should I choose and what would my minimum monthly cost be?",
+    "expected": "For 10TB of storage and dedicated phone support, you would need the Enterprise plan, which provides 5TB per seat. This means you would require 2 seats. The Enterprise plan costs $79/month per seat, totaling $158/month, but please note that Enterprise plans are annual billing only.",
+    "generated_by": "TATA1_1",
+    "fact_checks": [
+      {
+        "description": "Does the answer recommend the Enterprise plan?",
+        "keywords": [
+          "enterprise plan"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer state that the Enterprise plan provides 5TB per seat?",
+        "keywords": [
+          "5tb per seat"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer state that 2 seats are required?",
+        "keywords": [
+          "2 seats"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer mention the Enterprise plan costs $79/month per seat?",
+        "keywords": [
+          "$79/month per seat"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer correctly state the total minimum monthly cost is $158/month?",
+        "keywords": [
+          "$158/month"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer clarify that Enterprise plans are annual billing only?",
+        "keywords": [
+          "annual billing only"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "If I cancel my Pro subscription today, having started it 45 days ago, will I receive a refund?",
+    "expected": "No, you will not receive a refund. Since your subscription started 45 days ago, you are outside the 30-day window for a prorated refund. Your access will continue until the end of your current billing period.",
+    "generated_by": "TATA1_1",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that the user will not receive a refund?",
+        "keywords": [
+          "no",
+          "not receive",
+          "refund"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer explain that the user is outside the 30-day window for a prorated refund?",
+        "keywords": [
+          "outside",
+          "30-day window",
+          "prorated refund"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer mention that the subscription started 45 days ago as context?",
+        "keywords": [
+          "45 days ago",
+          "subscription started 45 days ago"
+        ],
+        "weight": 1
+      },
+      {
+        "description": "Does the answer state that access will continue until the end of the current billing period?",
+        "keywords": [
+          "access will continue",
+          "end of your current billing period"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "What plan offers phone support for my team, along with managing files over 10GB and creating shared team folders?",
+    "expected": "To access phone support, handle files over 10GB, and create team folders, you would need the Enterprise plan.",
+    "generated_by": "TATATA1_1_2",
+    "fact_checks": [
+      {
+        "description": "Does the answer identify the Enterprise plan as the required plan?",
+        "keywords": [
+          "enterprise plan"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer mention phone support as a feature?",
+        "keywords": [
+          "phone support"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer mention managing files over 10GB?",
+        "keywords": [
+          "files over 10gb"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer mention creating team folders?",
+        "keywords": [
+          "team folders"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "I signed up for a monthly plan 35 days ago and need to cancel. Will I get a prorated refund?",
+    "expected": "No, if you cancel after 30 days, you will not receive a prorated refund. Your access will continue until the end of your current billing period.",
+    "generated_by": "TATATA1_1_2",
+    "fact_checks": [
+      {
+        "description": "The answer explicitly states that a prorated refund will not be issued.",
+        "keywords": [
+          "no",
+          "not receive",
+          "prorated refund"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The answer correctly links the lack of refund to canceling after 30 days.",
+        "keywords": [
+          "after 30 days",
+          "not receive",
+          "prorated refund"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "The answer informs the user that their access will continue until the end of the current billing period.",
+        "keywords": [
+          "access will continue",
+          "end of current billing period"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "Can I get unlimited version history if I sign up for the Personal CloudSync Pro plan?",
+    "expected": "No, the Personal plan offers 30 days of version history. Unlimited version history is a feature of the Pro and Enterprise plans.",
+    "generated_by": "TATATA1_1_2",
+    "fact_checks": [
+      {
+        "description": "The answer directly states that the Personal plan does not provide unlimited version history.",
+        "keywords": [
+          "no",
+          "personal plan",
+          "unlimited version history"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The answer specifies that the Personal plan offers 30 days of version history.",
+        "keywords": [
+          "personal plan",
+          "30 days",
+          "version history"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "The answer correctly identifies Pro and Enterprise plans as offering unlimited version history.",
+        "keywords": [
+          "unlimited version history",
+          "pro",
+          "enterprise"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "I need to share files with my team and ensure we have chat support. Which CloudSync Pro plan offers this?",
+    "expected": "Both the CloudSync Pro and Enterprise plans offer team folders with permission controls and chat support. The Pro plan includes email and chat support with a response within 4 hours, while the Enterprise plan provides email, chat, phone support, and a dedicated account manager, in addition to team folders.",
+    "generated_by": "TA1",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that the CloudSync Pro plan offers team folders with permission controls?",
+        "keywords": [
+          "pro",
+          "team folders",
+          "permission controls"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer state that the CloudSync Pro plan offers chat support?",
+        "keywords": [
+          "pro",
+          "chat support"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer state that the CloudSync Enterprise plan offers team folders with permission controls?",
+        "keywords": [
+          "enterprise",
+          "team folders",
+          "permission controls"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer state that the CloudSync Enterprise plan offers chat support?",
+        "keywords": [
+          "enterprise",
+          "chat support"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer specify that the Pro plan includes email and chat support with a response within 4 hours?",
+        "keywords": [
+          "pro plan",
+          "email and chat support",
+          "4 hours"
+        ],
+        "weight": 1
+      },
+      {
+        "description": "Does the answer specify that the Enterprise plan provides email, chat, phone support, and a dedicated account manager?",
+        "keywords": [
+          "enterprise plan",
+          "email, chat, phone",
+          "dedicated account manager"
+        ],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "I frequently work with files larger than 12 gigabytes and need to keep unlimited past versions. What plan should I choose?",
+    "expected": "For files larger than 10GB, such as your 12GB files, you will require either the Pro or Enterprise plan. Both the Pro and Enterprise plans also offer unlimited version history. Therefore, you should choose either the CloudSync Pro or Enterprise plan to meet your requirements.",
+    "generated_by": "TA1",
+    "fact_checks": [
+      {
+        "description": "Does the answer correctly state that Pro or Enterprise plans are required for files larger than 10GB?",
+        "keywords": [
+          "pro",
+          "enterprise",
+          "10gb",
+          "larger"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer confirm that Pro and Enterprise plans offer unlimited version history?",
+        "keywords": [
+          "unlimited version history",
+          "pro",
+          "enterprise"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer recommend choosing either the CloudSync Pro or Enterprise plan?",
+        "keywords": [
+          "cloudsync pro",
+          "enterprise plan",
+          "choose",
+          "meet your requirements"
+        ],
+        "weight": 3
+      }
+    ]
+  },
+  {
+    "question": "I might cancel my plan around my first month of service. How would refunds work?",
+    "expected": "Our cancellation policy allows you to cancel anytime. If you cancel within the first 30 days of your subscription, you are eligible for a prorated refund. However, if you cancel after 30 days, no refund will be issued, and your access will continue until the end of your current billing period. The refund outcome for 'around your first month' would depend on whether your cancellation falls exactly on or before the 30-day mark, or after it.",
+    "generated_by": "TA1",
+    "fact_checks": [
+      {
+        "description": "Does the answer state that cancellation is possible at any time?",
+        "keywords": [
+          "cancel anytime"
+        ],
+        "weight": 1
+      },
+      {
+        "description": "Does the answer explain that a prorated refund is given if cancellation occurs within the first 30 days?",
+        "keywords": [
+          "prorated refund",
+          "within the first 30 days",
+          "30 days"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer explain that no refund is given if cancellation occurs after 30 days?",
+        "keywords": [
+          "no refund",
+          "after 30 days"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer mention that access continues until the end of the billing period if cancelled after 30 days?",
+        "keywords": [
+          "access will continue",
+          "end of your current billing period",
+          "billing period"
+        ],
+        "weight": 2
+      },
+      {
+        "description": "Does the answer clarify that the refund outcome for 'around your first month' depends on whether cancellation falls on or before the 30-day mark, or after it?",
+        "keywords": [
+          "depend",
+          "30-day mark",
+          "or after it"
+        ],
+        "weight": 2
+      }
+    ]
+  }
+]

@@ -1,213 +1,246 @@
-def answer_question(question, knowledge_base):
-    import re
+import re
 
+def _parse_knowledge_base(kb_string):
+    """Parses the knowledge base string into a structured dictionary."""
     parsed_kb = {}
+    lines = kb_string.strip().split('\n')
+    current_section = None
 
-    # --- Knowledge Base Parsing ---
-    # Product Name and Description
-    product_match = re.search(r"Product: (.+?) -- (.+)", knowledge_base)
-    if product_match:
-        parsed_kb['product_name'] = product_match.group(1).strip()
-        parsed_kb['product_description'] = product_match.group(2).strip()
-    product_name = parsed_kb.get('product_name', 'CloudSync Pro') # Default if not parsed or missing
+    # Helper to clean plan names for dictionary keys
+    def clean_plan_name(name):
+        return name.lower().replace(':', '').strip()
 
-    # Pricing
-    pricing_match = re.search(r"Pricing:\n((?:  - .+\n)+)", knowledge_base)
-    if pricing_match:
-        pricing_data = {}
-        for line in pricing_match.group(1).strip().split('\n'):
-            plan_match = re.match(r"  - (\w+): (.+)", line)
-            if plan_match:
-                plan_name_key = plan_match.group(1).lower()
-                full_details = plan_match.group(2).strip()
-                
-                plan_info = {'full_description': full_details}
-                
-                # Extract specific flags and clean up the 'price' part for clearer display
-                price_display_str = full_details
-                if "per seat" in price_display_str:
-                    plan_info['per_seat'] = True
-                    price_display_str = price_display_str.replace("per seat", "").strip()
-                if "annual billing only" in price_display_str:
-                    plan_info['annual_billing_only'] = True
-                    price_display_str = price_display_str.replace("annual billing only", "").strip()
-                if "(most popular)" in price_display_str:
-                    plan_info['most_popular'] = True
-                    price_display_str = price_display_str.replace("(most popular)", "").strip()
-                
-                # Clean up extra spaces/commas after removal
-                price_display_str = re.sub(r',\s*$', '', price_display_str).strip() # Remove trailing comma if any
-                price_display_str = re.sub(r'\s{2,}', ' ', price_display_str).strip() # Reduce multiple spaces
-                
-                plan_info['price_display'] = price_display_str
-                
-                pricing_data[plan_name_key] = plan_info
-        parsed_kb['pricing'] = pricing_data
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
 
-    # Storage Limits
-    storage_match = re.search(r"Storage Limits:\n((?:  - .+\n)+)", knowledge_base)
-    if storage_match:
-        storage_data = {}
-        for line in storage_match.group(1).strip().split('\n'):
-            plan_match = re.match(r"  - (\w+): (.+)", line)
-            if plan_match:
-                plan_name_key = plan_match.group(1).lower()
-                full_details = plan_match.group(2).strip()
-                
-                storage_info = {'full_description': full_details}
-                
-                storage_display_str = full_details
-                if "per seat" in storage_display_str:
-                    storage_info['per_seat'] = True
-                    storage_display_str = storage_display_str.replace("per seat", "").strip()
-                
-                storage_info['storage_display'] = storage_display_str.strip()
-                
-                storage_data[plan_name_key] = storage_info
-        parsed_kb['storage_limits'] = storage_data
+        if line.startswith("Product:"):
+            parts = line.split(":", 1)
+            if len(parts) > 1:
+                product_info = parts[1].strip().split(" -- ", 1)
+                parsed_kb["product_name"] = product_info[0].strip()
+                parsed_kb["product_description"] = product_info[1].strip() if len(product_info) > 1 else ""
+            current_section = None
+        elif line.startswith("Pricing:"):
+            current_section = "pricing"
+            parsed_kb[current_section] = {}
+        elif line.startswith("Storage Limits:"):
+            current_section = "storage_limits"
+            parsed_kb[current_section] = {}
+        elif line.startswith("Free Trial:"):
+            parsed_kb["free_trial"] = line.split(":", 1)[1].strip()
+            current_section = None
+        elif line.startswith("Supported Platforms:"):
+            parsed_kb["supported_platforms"] = line.split(":", 1)[1].strip()
+            current_section = None
+        elif line.startswith("Key Features:"):
+            current_section = "key_features"
+            parsed_kb[current_section] = []
+        elif line.startswith("- ") and current_section:
+            item = line[2:].strip()
+            if current_section == "pricing":
+                if ":" in item:
+                    plan_name_raw, value = item.split(":", 1)
+                    plan_name = clean_plan_name(plan_name_raw)
+                    
+                    pricing_details = {}
+                    value = value.strip()
+                    
+                    # Check for "most popular" tag
+                    if "(most popular)" in value:
+                        pricing_details["most_popular"] = True
+                        value = value.replace("(most popular)", "").strip()
+                    
+                    # Specific handling for Enterprise pricing format
+                    if plan_name == "enterprise":
+                        monthly_rate_match = re.search(r'(\$\d+)/month per seat', value, re.IGNORECASE)
+                        if monthly_rate_match:
+                            pricing_details["monthly_rate_per_seat"] = monthly_rate_match.group(1)
+                        if "annual billing only" in value:
+                            pricing_details["billing_type"] = "annual billing only"
+                    else: # Personal and Pro plans
+                        monthly_match = re.search(r'(\$\d+)/month', value, re.IGNORECASE)
+                        annual_match = re.search(r'(\$\d+)/year', value, re.IGNORECASE)
+                        
+                        if monthly_match:
+                            pricing_details["monthly"] = monthly_match.group(1)
+                        if annual_match:
+                            pricing_details["annual"] = annual_match.group(1)
+                        
+                        # Fallback for unexpected formats, store full string if no specific price parsed
+                        if not monthly_match and not annual_match and not pricing_details.get("monthly_rate_per_seat") and value:
+                            pricing_details["full_string"] = value
+                    
+                    parsed_kb[current_section][plan_name] = pricing_details
 
-    # Free Trial
-    free_trial_match = re.search(r"Free Trial: (.+?)(?:, (no credit card required))?", knowledge_base)
-    if free_trial_match:
-        parsed_kb['free_trial_duration'] = free_trial_match.group(1).strip()
-        parsed_kb['free_trial_no_cc'] = bool(free_trial_match.group(2)) # True if "no credit card required" is present
+            elif current_section == "storage_limits":
+                if ":" in item: # Ensure it's a key-value pair
+                    plan_name, value = item.split(":", 1)
+                    parsed_kb[current_section][clean_plan_name(plan_name)] = value.strip()
+            elif current_section == "key_features":
+                parsed_kb[current_section].append(item)
+    return parsed_kb
 
-    # Supported Platforms
-    platforms_match = re.search(r"Supported Platforms: (.+)", knowledge_base)
-    if platforms_match:
-        parsed_kb['supported_platforms'] = [p.strip() for p in platforms_match.group(1).split(',')]
 
-    # Key Features
-    features_match = re.search(r"Key Features:\n((?:  - .+\n)+)", knowledge_base)
-    if features_match:
-        features_list = []
-        for line in features_match.group(1).strip().split('\n'):
-            feature_match = re.match(r"  - (.+)", line)
-            if feature_match:
-                features_list.append(feature_match.group(1).strip())
-        parsed_kb['key_features'] = features_list
+def answer_question(question, knowledge_base):
+    """Answer a customer question using the knowledge base.
 
-    # --- Intent Detection and Answering ---
+    Args:
+        question: str, the customer's question
+        knowledge_base: str, product information text
+
+    Returns: str, the answer
+    """
+    parsed_kb = _parse_knowledge_base(knowledge_base)
     question_lower = question.lower()
+    response_parts = []
+    # Use a list to track found info types, allowing for multiple types in one response
+    info_found_in_sections = [] 
 
-    # Helper to find plan name in the question
-    def get_plan_from_question(q_lower):
-        for plan_key in ["personal", "pro", "enterprise"]:
-            if plan_key in q_lower:
-                return plan_key
-        return None
-
-    # Free Trial
-    if any(keyword in question_lower for keyword in ["trial", "free", "demo", "test", "try", "cost to try"]):
-        if 'free_trial_duration' in parsed_kb:
-            response = [f"Yes, {product_name} offers a {parsed_kb['free_trial_duration']} free trial on any plan."]
-            if parsed_kb.get('free_trial_no_cc'):
-                response.append("No credit card is required to start.")
-            return " ".join(response)
-        return f"I don't have information about a free trial for {product_name}."
-
-    # Pricing
-    if any(keyword in question_lower for keyword in ["price", "cost", "how much", "monthly", "annual", "plan", "subscription", "pricing"]):
-        found_plan = get_plan_from_question(question_lower)
-        if 'pricing' in parsed_kb:
-            if found_plan:
-                if found_plan in parsed_kb['pricing']:
-                    plan_info = parsed_kb['pricing'][found_plan]
-                    response_parts = [f"The {found_plan.capitalize()} plan for {product_name} costs {plan_info['price_display']}."]
-                    if plan_info.get('per_seat'):
-                        response_parts.append("This is priced per seat.")
-                    if plan_info.get('annual_billing_only'):
-                        response_parts.append("It requires annual billing only.")
-                    if plan_info.get('most_popular'):
-                        response_parts.append("It's our most popular plan!")
-                    return " ".join(response_parts)
-                else:
-                    return f"I don't have specific pricing details for the {found_plan.capitalize()} plan for {product_name}."
-            else: # General pricing query, list all plans
-                pricing_statements = []
-                for plan_key, details in parsed_kb['pricing'].items():
-                    statement = f"{plan_key.capitalize()}: {details['price_display']}"
-                    if details.get('per_seat'):
-                        statement += " (per seat)"
-                    if details.get('annual_billing_only'):
-                        statement += " (annual billing only)"
-                    if details.get('most_popular'):
-                        statement += " (most popular)"
-                    pricing_statements.append(statement)
-                return f"{product_name} offers the following plans: {'; '.join(pricing_statements)}."
-        return f"I don't have detailed pricing information for {product_name}."
-
-    # Storage Limits
-    if any(keyword in question_lower for keyword in ["storage", "gb", "tb", "space", "limit", "capacity"]):
-        found_plan = get_plan_from_question(question_lower)
-        if 'storage_limits' in parsed_kb:
-            if found_plan:
-                if found_plan in parsed_kb['storage_limits']:
-                    storage_info = parsed_kb['storage_limits'][found_plan]
-                    response_parts = [f"The {found_plan.capitalize()} plan for {product_name} includes {storage_info['storage_display']} of storage."]
-                    if storage_info.get('per_seat'):
-                        response_parts.append("This is per seat.")
-                    return " ".join(response_parts)
-                else:
-                    return f"I don't have specific storage limits for the {found_plan.capitalize()} plan for {product_name}."
-            else: # General storage query, list all limits
-                storage_statements = []
-                for plan_key, details in parsed_kb['storage_limits'].items():
-                    statement = f"{plan_key.capitalize()}: {details['storage_display']}"
-                    if details.get('per_seat'):
-                        statement += " (per seat)"
-                    storage_statements.append(statement)
-                return f"{product_name} offers the following storage limits: {'; '.join(storage_statements)}."
-        return f"I don't have detailed storage limit information for {product_name}."
-
-    # Supported Platforms
-    if any(keyword in question_lower for keyword in ["platform", "device", "os", "compatible", "support", "work on", "run on", "app"]):
-        if 'supported_platforms' in parsed_kb:
-            return f"{product_name} supports the following platforms: {', '.join(parsed_kb['supported_platforms'])}."
-        return f"I don't have information about supported platforms for {product_name}."
-
-    # Key Features
-    if any(keyword in question_lower for keyword in ["feature", "what does it do", "can it", "encryption", "sync", "capabilities", "real-time", "end-to-end"]):
-        if 'key_features' in parsed_kb:
-            return f"Key features of {product_name} include: {'; '.join(parsed_kb['key_features'])}."
-        return f"I don't have specific information about the key features of {product_name}."
+    # Identify requested plans
+    requested_plans = []
     
-    # General Product Info / Plan overview (if a plan is mentioned but no specific intent keyword)
-    found_plan = get_plan_from_question(question_lower)
-    if found_plan:
-        plan_summary_parts = [f"Here's some information about the {found_plan.capitalize()} plan for {product_name}:"]
-        
-        # Add pricing info
-        if 'pricing' in parsed_kb and found_plan in parsed_kb['pricing']:
-            plan_info = parsed_kb['pricing'][found_plan]
-            price_details_str = plan_info['price_display']
-            if plan_info.get('per_seat'):
-                price_details_str += " (per seat)"
-            if plan_info.get('annual_billing_only'):
-                price_details_str += " (annual billing only)"
-            if plan_info.get('most_popular'):
-                price_details_str += " (most popular)"
-            plan_summary_parts.append(f"Price: {price_details_str}.")
-        
-        # Add storage info
-        if 'storage_limits' in parsed_kb and found_plan in parsed_kb['storage_limits']:
-            storage_info = parsed_kb['storage_limits'][found_plan]
-            storage_details_str = storage_info['storage_display']
-            if storage_info.get('per_seat'):
-                storage_details_str += " (per seat)"
-            plan_summary_parts.append(f"Storage: {storage_details_str}.")
-        
-        if len(plan_summary_parts) > 1: # If any specific info was added beyond the intro
-            return " ".join(plan_summary_parts)
-        # Fallback if plan is mentioned but no specific price/storage found
-        return f"I found information about the {found_plan.capitalize()} plan, but cannot provide a detailed summary for your specific question. Please clarify if you're asking about pricing, storage, or features."
+    # Prioritize Enterprise/Personal as they are less ambiguous than "Pro"
+    if re.search(r'\benterprise\b', question_lower):
+        requested_plans.append("enterprise")
+    if re.search(r'\bpersonal\b', question_lower):
+        requested_plans.append("personal")
+    
+    # "Pro" plan detection is tricky because "CloudSync Pro" is the product name.
+    # Look for "pro plan" or "pro" in specific contexts related to features, pricing, storage, etc.
+    # Exclude cases where "pro" is part of "CloudSync Pro" unless explicitly asking about the "Pro plan"
+    if (re.search(r'\bpro plan\b', question_lower) or
+        (re.search(r'\bpro\b(?!duct)', question_lower) and # 'pro' not immediately followed by 'duct'
+         not re.search(r'\bcloudsync pro\b', question_lower) and # Ensure it's not just product name
+         any(k in question_lower for k in ["price", "cost", "storage", "capacity", "limit", "plan", "features", "what about pro"]))):
+        if "pro" not in requested_plans:
+            requested_plans.append("pro")
+            
+    # Remove duplicates and preserve order
+    requested_plans = list(dict.fromkeys(requested_plans))
 
-    # If no specific intent found, but question mentions the product name or is a general inquiry about it
-    if product_name.lower() in question_lower or "what is it" in question_lower or f"tell me about {product_name.lower()}" in question_lower:
-        if 'product_description' in parsed_kb:
-            return f"{product_name} is a {parsed_kb['product_description']}."
-        # Fallback if description isn't parsed
-        return f"{product_name} is a cloud file synchronization service. How can I help you further?"
 
-    # Default fallback if no relevant information is found
-    return f"Thank you for contacting us. I can provide information about pricing, storage, free trials, supported platforms, and key features of {product_name}. Please rephrase your question to be more specific."
+    # --- General product description ---
+    # Trigger if question is about the product itself, or if "CloudSync Pro" is mentioned
+    # without specific keywords for pricing/storage/features etc., and no other specific info has been added yet.
+    is_general_product_query = (
+        any(k in question_lower for k in ["what is cloudsync pro", "tell me about cloudsync pro", "about your service", "product description", "what is your product"]) or
+        (re.search(r'\bcloudsync pro\b', question_lower) and
+         not any(k in question_lower for k in ["price", "cost", "storage", "feature", "trial", "platform", "plan", "limit", "gb", "tb", "month", "year", "how much"]))
+    )
+    
+    if is_general_product_query and not response_parts: # Only provide general description if nothing more specific has been found
+        if parsed_kb.get("product_name") and parsed_kb.get("product_description"):
+            response_parts.append(f"{parsed_kb['product_name']} is a {parsed_kb['product_description']}.")
+            info_found_in_sections.append("product_description")
+
+
+    # --- Pricing Information ---
+    pricing_keywords = ["price", "cost", "how much", "pricing"]
+    is_pricing_query = any(k in question_lower for k in pricing_keywords)
+    if is_pricing_query:
+        pricing_info = parsed_kb.get("pricing")
+        if pricing_info:
+            # If no specific plans requested, default to listing all plans
+            target_plans = requested_plans if requested_plans else list(pricing_info.keys())
+            
+            specific_pricing_requested_type = None
+            if "monthly" in question_lower and "annual" not in question_lower:
+                specific_pricing_requested_type = "monthly"
+            elif "annual" in question_lower and "monthly" not in question_lower:
+                specific_pricing_requested_type = "annual"
+            
+            plan_price_statements = []
+            for plan_key in target_plans:
+                if plan_key in pricing_info:
+                    details = pricing_info[plan_key]
+                    plan_display_name = plan_key.capitalize()
+                    
+                    plan_prefix = ""
+                    if plan_key == "pro" and details.get("most_popular"):
+                        plan_prefix = f"Our most popular {plan_display_name} plan"
+                    else:
+                        plan_prefix = f"The {plan_display_name} plan"
+
+                    price_parts = []
+                    if plan_key == "enterprise":
+                        if details.get("monthly_rate_per_seat"):
+                            enterprise_price_string = f"{details['monthly_rate_per_seat']}/month per seat"
+                            if details.get("billing_type"):
+                                enterprise_price_string += f", {details['billing_type']}"
+                            price_parts.append(enterprise_price_string)
+                    else: # Personal and Pro plans
+                        if specific_pricing_requested_type == "monthly" and details.get("monthly"):
+                            price_parts.append(f"{details['monthly']}/month")
+                        elif specific_pricing_requested_type == "annual" and details.get("annual"):
+                            price_parts.append(f"{details['annual']}/year")
+                        elif details.get("monthly") and details.get("annual"):
+                            price_parts.append(f"{details['monthly']}/month or {details['annual']}/year")
+                        elif details.get("monthly"):
+                            price_parts.append(f"{details['monthly']}/month")
+                        elif details.get("annual"):
+                            price_parts.append(f"{details['annual']}/year")
+                        elif details.get("full_string"): # Fallback for unexpected formats
+                            price_parts.append(details['full_string'])
+                    
+                    if price_parts:
+                        plan_price_statements.append(f"{plan_prefix} costs {', or '.join(price_parts)}.")
+            
+            if plan_price_statements:
+                response_parts.append(" ".join(plan_price_statements))
+                info_found_in_sections.append("pricing")
+
+    # --- Storage Limits ---
+    storage_keywords = ["storage", "capacity", "gb", "tb", "limit"]
+    is_storage_query = any(k in question_lower for k in storage_keywords)
+    if is_storage_query:
+        storage_info = parsed_kb.get("storage_limits")
+        if storage_info:
+            # If no specific plans requested, default to listing all plans
+            target_plans = requested_plans if requested_plans else list(storage_info.keys())
+            
+            plan_storage_statements = []
+            for plan_key in target_plans:
+                if plan_key in storage_info:
+                    plan_display_name = plan_key.capitalize()
+                    plan_storage_statements.append(f"The {plan_display_name} plan includes {storage_info[plan_key]} of storage.")
+            
+            if plan_storage_statements:
+                response_parts.append(" ".join(plan_storage_statements))
+                info_found_in_sections.append("storage_limits")
+
+    # --- Free Trial ---
+    if any(k in question_lower for k in ["trial", "free"]):
+        free_trial_info = parsed_kb.get("free_trial")
+        if free_trial_info:
+            response_parts.append(f"We offer a {free_trial_info}.")
+            info_found_in_sections.append("free_trial")
+
+    # --- Supported Platforms ---
+    if any(k in question_lower for k in ["platform", "device", "support", "os", "compatibility", "work on", "runs on"]):
+        platforms_info = parsed_kb.get("supported_platforms")
+        if platforms_info:
+            response_parts.append(f"CloudSync Pro supports: {platforms_info}.")
+            info_found_in_sections.append("supported_platforms")
+
+    # --- Key Features ---
+    if any(k in question_lower for k in ["feature", "what does it do", "abilities", "can it do"]):
+        features_info = parsed_kb.get("key_features")
+        if features_info:
+            response_parts.append(f"Key features include: {', '.join(features_info)}.")
+            info_found_in_sections.append("key_features")
+
+    # --- Construct final answer ---
+    if response_parts:
+        final_answer = " ".join(response_parts)
+        # Ensure proper punctuation at the end of the sentence before adding the closing phrase
+        if not final_answer.strip().endswith(('.', '!', '?')):
+             final_answer += "."
+        return final_answer + " Is there anything else I can help you with?"
+    else:
+        # Provide a more specific fallback if a general product query was made but failed
+        if is_general_product_query and "product_description" not in info_found_in_sections:
+            return "Thank you for contacting us. I couldn't find a direct answer to your question about CloudSync Pro. Please visit our website for more information or try rephrasing your question."
+        else:
+            return "Thank you for contacting us. I couldn't find a direct answer to your question in our knowledge base. Please visit our website for more information or try rephrasing your question."

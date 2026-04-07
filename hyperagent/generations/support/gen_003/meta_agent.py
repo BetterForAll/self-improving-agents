@@ -29,7 +29,7 @@ def propose_modifications(agent_files, eval_results, task_info):
         f"You may modify task_agent.py (how solutions are proposed) and/or "
         f"meta_agent.py (how improvements are proposed -- your own code).\n\n"
         f"RULES:\n"
-        f"- task_agent.py MUST export: propose(current_code, best_metric, history, metric_name)\n"
+        f"- task_agent.py MUST export: propose(current_code, best_metric, history, metric_name, higher_is_better)\n"
         f"  which returns (proposed_code_string, raw_llm_response)\n"
         f"- meta_agent.py MUST export: propose_modifications(agent_files, eval_results, task_info)\n"
         f"  which returns a dict of {{filename: new_source_or_None}}\n"
@@ -37,7 +37,7 @@ def propose_modifications(agent_files, eval_results, task_info):
         f"- Keep the sys.path.insert and import llm lines at the top\n\n"
         f"Return a JSON object where keys are filenames and values are the "
         f"complete new file contents. Use null for files you do not want to change.\n"
-        f'Example: {{"task_agent.py": "import sys\\nimport os\\n...", "meta_agent.py": null}}\n'
+        f'Example: {{\"task_agent.py\": \"import sys\\nimport os\\n...\", \"meta_agent.py\": null}}\n'
         f"Return ONLY the JSON object."
     )
     raw = llm.ask(prompt)

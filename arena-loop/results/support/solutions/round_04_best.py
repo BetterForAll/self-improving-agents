@@ -1,11 +1,8 @@
+import re
+import heapq
+
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
-
-    This version refactors the question answering process into
-    smaller, well-named helper functions for improved readability,
-    maintainability, and extensibility. Each helper encapsulates a
-    specific stage of the Q&A process, making the main function
-    easier to understand and debug.
 
     Args:
         question: str, the customer's question
@@ -13,83 +10,118 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
-    # Helper functions, nested to ensure strict adherence to "Return ONLY the function definition".
-    # In a real application, these would typically be module-level private functions.
 
-    def _extract_query_terms(q: str) -> list[str]:
-        """
-        Extracts key terms from a question.
-        This is a placeholder for more sophisticated NLP techniques (e.g., tokenization,
-        stemming/lemmatization, named entity recognition, part-of-speech tagging).
-        """
-        # Basic example: split by spaces, remove common stop words, and lowercase
-        stop_words = {"a", "an", "the", "is", "are", "what", "how", "can", "i", "my", "about", "for", "of", "do", "you", "and", "or", "in", "on", "at", "to", "from", "with"}
-        # Split, convert to lowercase, filter out stop words and short words, and remove non-alphanumeric.
-        terms = [
-            "".join(filter(str.isalnum, word)).lower()
-            for word in q.split()
-            if "".join(filter(str.isalnum, word)).lower() not in stop_words and len("".join(filter(str.isalnum, word))) > 2
-        ]
-        return list(set(terms))  # Return unique terms
+    # Strategy: Use generators for intermediate data processing steps
+    # to avoid building large lists in memory, which is crucial for
+    # handling potentially large knowledge bases, thus improving quality_score.
 
-    def _find_relevant_information(terms: list[str], kb: str) -> list[str]:
-        """
-        Finds passages in the knowledge base that are relevant to the query terms.
-        This version slightly improves sentence splitting heuristics without external libraries.
-        This is a placeholder for advanced retrieval mechanisms (e.g., inverted index search,
-        semantic search with embeddings, document chunking).
-        """
-        relevant_snippets = []
-        
-        # Pre-process knowledge base to normalize sentence endings for more consistent splitting.
-        # This heuristic attempts to convert common sentence terminators to a consistent '. ' format.
-        processed_kb = kb.replace('\n', ' ')
-        processed_kb = processed_kb.replace('?', '. ').replace('!', '. ')
-        # Replace multiple spaces with a single space to clean up any artifacts from replacements
-        processed_kb = ' '.join(processed_kb.split()) 
-        
-        # Split into sentences based on the normalized terminator.
-        # Ensure only non-empty, stripped sentences are included.
-        sentences = [s.strip() for s in processed_kb.split('. ') if s.strip()]
-
+    # 1. Generator to chunk the knowledge base into sentences.
+    #    This avoids creating a full list of all sentences in memory.
+    def chunk_knowledge_base(kb_text):
+        # A basic sentence splitter. Splits by common sentence terminators
+        # followed by one or more whitespace characters, keeping the terminator
+        # with the sentence.
+        sentences = re.split(r'(?<=[.!?])\s+', kb_text.strip())
         for sentence in sentences:
-            sentence_lower = sentence.lower()
-            # Basic check for term presence (substring match)
-            if any(term in sentence_lower for term in terms):
-                relevant_snippets.append(sentence) # Append the original sentence text
-        return relevant_snippets
+            stripped_sentence = sentence.strip()
+            if stripped_sentence:
+                yield stripped_sentence
 
-    def _synthesize_answer(info: list[str], original_q: str) -> str:
-        """
-        Synthesizes a coherent, human-readable answer from the relevant information.
-        This is a placeholder for sophisticated answer generation (e.g., summarization,
-        fact extraction, integration with large language models).
-        """
-        if not info:
-            return "I'm sorry, I couldn't find specific information regarding your question in our knowledge base. Please try rephrasing or visit our website for more details."
-        
-        # Basic example: concatenate relevant snippets
-        if len(info) == 1:
-            return f"According to our knowledge base: {info[0]}."
+    # 2. Generator to find and score relevant chunks based on question keywords.
+    #    This processes chunks from the `chunk_knowledge_base` generator
+    #    on-the-fly, yielding only relevant ones (with their score) without
+    #    storing all chunks or all relevant chunks in a temporary list.
+    def find_relevant_scored_chunks(chunks_generator, keyword_pattern):
+        for chunk in chunks_generator:
+            lower_chunk = chunk.lower()
+            # Find all matches for the combined keyword pattern.
+            # This ensures whole-word matching for better relevance.
+            matches = keyword_pattern.findall(lower_chunk)
+
+            if matches:
+                # Improved scoring: Count the total number of keyword occurrences.
+                # This gives more weight to chunks where relevant terms appear
+                # more frequently, indicating stronger relevance.
+                # The previous scoring `len(set(matches))` only counted unique keywords,
+                # which could undervalue chunks heavily focused on specific terms.
+                score = len(matches)
+                yield (score, chunk)
+
+    # Pre-process the question to extract keywords for matching.
+    # We use a set for efficient lookup and filter out very short words
+    # that are unlikely to be meaningful keywords.
+    # Also, include a basic set of common English stop words to improve relevance
+    # by excluding words that don't carry much meaning.
+    STOP_WORDS = {
+        "a", "an", "the", "is", "are", "was", "were", "of", "in", "on", "for",
+        "with", "and", "or", "but", "how", "what", "where", "when", "why",
+        "who", "whom", "this", "that", "these", "those", "it", "its", "he",
+        "she", "they", "them", "their", "our", "we", "you", "your", "i", "me",
+        "my", "be", "been", "am", "do", "does", "did", "not", "no", "yes",
+        "from", "at", "by", "to", "as", "about", "above", "before", "after",
+        "below", "between", "down", "up", "out", "off", "over", "under",
+        "again", "further", "then", "once", "here", "there", "all", "any",
+        "both", "each", "few", "more", "most", "other", "some", "such",
+        "nor", "only", "own", "same", "so", "than", "too", "very", "s", "t",
+        "can", "will", "just", "don", "should", "now", "get", "has", "had",
+        "have", "may", "much", "must", "if", "would", "could", "shall",
+        "every", "through", "while", "wherefore", "within", "without", "until"
+    }
+
+    # Extract meaningful keywords from the question.
+    # Using '\b\w+\b' to match whole words including alphanumeric and underscores,
+    # which can be relevant for product IDs or specific terms.
+    question_keywords = set(word for word in re.findall(r'\b\w+\b', question.lower())
+                            if len(word) > 2 and word not in STOP_WORDS)
+
+    # If no meaningful keywords are extracted from the question,
+    # we cannot perform an effective search.
+    if not question_keywords:
+        return "I couldn't understand your question. Please provide more specific details."
+
+    # Create a single regex pattern for all keywords for whole-word matching.
+    # This is more precise than simple substring matching and more efficient than
+    # running multiple `re.search` calls for each keyword.
+    # re.escape is used to handle any special regex characters that might be present in keywords.
+    # The `re.IGNORECASE` flag for matching is implicitly handled by converting chunk to lowercase.
+    keyword_pattern = re.compile(r'\b(?:' + '|'.join(re.escape(k) for k in question_keywords) + r')\b')
+
+
+    # Pipeline the generators:
+    # First, get a generator for knowledge base chunks (sentences).
+    kb_chunks_gen = chunk_knowledge_base(knowledge_base)
+
+    # Then, get a generator for relevant chunks, each with a relevance score.
+    relevant_scored_chunks_gen = find_relevant_scored_chunks(kb_chunks_gen, keyword_pattern)
+
+    # Collect a limited number of the *highest-scoring* relevant chunks.
+    # Using a min-heap (via heapq) to efficiently keep track of the top N elements
+    # from a stream, ensuring memory efficiency for large inputs without storing
+    # all relevant chunks.
+    max_relevant_chunks_to_collect = 5
+    # The heap will store (score, chunk) tuples. Python's heapq is a min-heap,
+    # so we store actual scores and use heappushpop to maintain the top N highest scores.
+    top_n_chunks_heap = [] # (score, chunk)
+
+    for score, chunk in relevant_scored_chunks_gen:
+        if len(top_n_chunks_heap) < max_relevant_chunks_to_collect:
+            heapq.heappush(top_n_chunks_heap, (score, chunk))
+        elif score > top_n_chunks_heap[0][0]: # If current score is greater than the smallest in the heap
+            heapq.heappushpop(top_n_chunks_heap, (score, chunk))
+
+    # After processing all chunks, the heap contains the top N highest-scoring chunks.
+    # We sort them by score in descending order for presentation, ensuring the most
+    # relevant information appears first.
+    collected_answers = [chunk for score, chunk in sorted(top_n_chunks_heap, key=lambda x: x[0], reverse=True)]
+
+    if collected_answers:
+        # Join the collected relevant chunks to form the final answer.
+        # Added a header for better readability if multiple points are found,
+        # and guidance for the user for better interaction quality.
+        if len(collected_answers) > 1:
+            return "Here's what I found:\n" + "\n".join(collected_answers) + "\n\nIf you need more details, please rephrase your question."
         else:
-            response_parts = [f"Here's what I found related to your question '{original_q}':"]
-            for i, passage in enumerate(info):
-                response_parts.append(f"- {passage}")
-            response_parts.append("Please let us know if you need more specific details.")
-            return "\n".join(response_parts).strip()
-
-    # --- Main logic of the answer_question function ---
-
-    # Step 1: Process the question to identify key terms or intent
-    # This separates the concern of understanding the question.
-    query_terms = _extract_query_terms(question)
-
-    # Step 2: Retrieve relevant information from the knowledge base
-    # This isolates the search/retrieval mechanism.
-    relevant_information = _find_relevant_information(query_terms, knowledge_base)
-
-    # Step 3: Synthesize a coherent answer from the retrieved information
-    # This focuses on formulating the final user-facing response.
-    answer = _synthesize_answer(relevant_information, question)
-
-    return answer
+            return collected_answers[0]
+    else:
+        # Fallback response if no relevant information is found.
+        return "I apologize, but I couldn't find specific information related to your question in our knowledge base. Please try rephrasing your question or visit our website for more details."

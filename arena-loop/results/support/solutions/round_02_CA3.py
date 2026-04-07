@@ -1,3 +1,5 @@
+import re
+
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
 
@@ -7,31 +9,82 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
-    # Define reasonable maximum lengths for inputs to prevent performance/memory issues
-    # These limits should be chosen based on the capabilities of the downstream NLP model
-    # and expected use cases.
-    MAX_QUESTION_LENGTH = 2000  # e.g., to prevent excessively long or malicious questions
-    MAX_KNOWLEDGE_BASE_LENGTH = 500000 # e.g., to prevent loading massive texts into memory
 
-    # Input validation for 'question'
-    if not isinstance(question, str):
-        raise TypeError("The 'question' argument must be a string.")
-    if not question.strip():
-        raise ValueError("The 'question' argument cannot be empty or contain only whitespace.")
-    if len(question) > MAX_QUESTION_LENGTH:
-        raise ValueError(f"The 'question' argument exceeds the maximum allowed length of {MAX_QUESTION_LENGTH} characters. "
-                         "Please provide a shorter question.")
+    # Strategy: Use generators for intermediate data processing steps
+    # to avoid building large lists in memory, which is crucial for
+    # handling potentially large knowledge bases, thus improving quality_score.
 
-    # Input validation for 'knowledge_base'
-    if not isinstance(knowledge_base, str):
-        raise TypeError("The 'knowledge_base' argument must be a string.")
-    if not knowledge_base.strip():
-        # If the knowledge base is empty, the function cannot fulfill its purpose.
-        # This is an edge case of "empty datasets" or "malformed input" for the function's core logic.
-        raise ValueError("The 'knowledge_base' argument cannot be empty or contain only whitespace, as it's required to answer questions.")
-    if len(knowledge_base) > MAX_KNOWLEDGE_BASE_LENGTH:
-        raise ValueError(f"The 'knowledge_base' argument exceeds the maximum allowed length of {MAX_KNOWLEDGE_BASE_LENGTH} characters. "
-                         "Please provide a more concise knowledge base or chunk it appropriately.")
+    # 1. Generator to chunk the knowledge base into sentences.
+    #    This avoids creating a full list of all sentences in memory.
+    def chunk_knowledge_base(kb_text):
+        # A basic sentence splitter. In a more sophisticated system,
+        # one might use an NLP library (e.g., NLTK, spaCy) for better accuracy.
+        # This regex splits by common sentence terminators followed by whitespace,
+        # keeping the terminator with the sentence.
+        sentences = re.split(r'(?<=[.!?])\s+', kb_text.strip())
+        for sentence in sentences:
+            if sentence.strip():
+                yield sentence.strip()
 
-    # Current baseline: just return a generic response (actual NLP logic would go here)
-    return "Thank you for contacting us. Please visit our website for more information."
+    # 2. Generator to filter relevant chunks based on question keywords.
+    #    This processes chunks from the `chunk_knowledge_base` generator
+    #    on-the-fly, yielding only relevant ones without storing all chunks
+    #    or all relevant chunks in a temporary list.
+    def find_relevant_chunks(chunks_generator, keywords):
+        for chunk in chunks_generator:
+            # Convert chunk to lowercase once for efficiency when checking multiple keywords.
+            lower_chunk = chunk.lower()
+            # Simple keyword matching for relevance (case-insensitive)
+            if any(keyword in lower_chunk for keyword in keywords):
+                yield chunk
+
+    # Pre-process the question to extract keywords for matching.
+    # We use a set for efficient lookup and filter out very short words
+    # that are unlikely to be meaningful keywords.
+    # Also, include a basic set of common English stop words to improve relevance
+    # by excluding words that don't carry much meaning.
+    STOP_WORDS = {
+        "a", "an", "the", "is", "are", "was", "were", "of", "in", "on", "for",
+        "with", "and", "or", "but", "how", "what", "where", "when", "why",
+        "who", "whom", "this", "that", "these", "those", "it", "its", "he",
+        "she", "they", "them", "their", "our", "we", "you", "your", "i", "me",
+        "my", "be", "been", "am", "do", "does", "did", "not", "no", "yes",
+        "from", "at", "by", "to", "as", "about", "above", "before", "after",
+        "below", "between", "down", "up", "out", "off", "over", "under",
+        "again", "further", "then", "once", "here", "there", "all", "any",
+        "both", "each", "few", "more", "most", "other", "some", "such",
+        "nor", "only", "own", "same", "so", "than", "too", "very", "s", "t",
+        "can", "will", "just", "don", "should", "now"
+    }
+
+    question_keywords = set(word for word in re.findall(r'\b\w+\b', question.lower())
+                            if len(word) > 2 and word not in STOP_WORDS)
+
+    # If no meaningful keywords are extracted from the question,
+    # we cannot perform an effective search.
+    if not question_keywords:
+        return "I couldn't understand your question. Please provide more specific details."
+
+    # Pipeline the generators:
+    # First, get a generator for knowledge base chunks.
+    kb_chunks_gen = chunk_knowledge_base(knowledge_base)
+    # Then, get a generator for relevant chunks from the kb_chunks_gen, using question keywords.
+    relevant_chunks_gen = find_relevant_chunks(kb_chunks_gen, question_keywords)
+
+    # Collect a limited number of relevant chunks to form the answer.
+    # We limit the collection to prevent excessively long answers and
+    # to manage memory if many chunks are relevant (though the generators
+    # already prevent storing all initially).
+    max_relevant_chunks_to_collect = 5
+    collected_answers = []
+    for i, chunk in enumerate(relevant_chunks_gen):
+        if i >= max_relevant_chunks_to_collect:
+            break
+        collected_answers.append(chunk)
+
+    if collected_answers:
+        # Join the collected relevant chunks to form the final answer.
+        return " ".join(collected_answers)
+    else:
+        # Fallback response if no relevant information is found.
+        return "I apologize, but I couldn't find specific information related to your question in our knowledge base. Please try rephrasing your question or visit our website for more details."

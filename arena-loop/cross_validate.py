@@ -218,6 +218,32 @@ def _run_support_judge(solution_path, test_cases, knowledge_base, llm_module,
     return avg, answers
 
 
+def _score_support_expanded(answer_fn, expanded_tests, rubric_mod, llm_module, knowledge_base):
+    """Score a solution against the expanded test suite using per-question rubric scoring."""
+    scores = []
+    for tc in expanded_tests:
+        try:
+            ans = str(answer_fn(tc["question"], knowledge_base))
+        except Exception:
+            scores.append(0.0)
+            continue
+        # Use fact_checks from expanded tests if available, else lookup from rubric
+        if tc.get("fact_checks"):
+            rubric_entry = tc
+        else:
+            rubric_entry = None
+            for entry in rubric_mod.RUBRIC:
+                if entry["question"].strip() == tc["question"].strip():
+                    rubric_entry = entry
+                    break
+        if rubric_entry:
+            result = rubric_mod.score_answer(rubric_entry, ans, llm_module)
+            scores.append(result["score"])
+        else:
+            scores.append(0.0)
+    return sum(scores) / len(scores) if scores else 0.0
+
+
 def cross_validate_support():
     """Unified support cross-validation using rubric-based boolean scoring."""
     # Check all solutions exist
@@ -248,19 +274,27 @@ def cross_validate_support():
     rubric_mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(rubric_mod)
 
+    # Load expanded test suite if available
+    expanded_path = os.path.join(DIR, "results", "support", "tests", "final_tests.json")
+    expanded_tests = None
+    if os.path.exists(expanded_path):
+        with open(expanded_path) as f:
+            expanded_tests = json.load(f)
+
     print("=" * 70)
     print("  CROSS-VALIDATION: support (rubric-based boolean scoring)")
     print("=" * 70)
     print()
-    print(f"  Scoring all {len(solutions)} solutions against {len(test_cases)} questions")
-    print(f"  using boolean fact checks (keyword + LLM YES/NO fallback).")
+    print(f"  Original test suite:  {len(test_cases)} questions")
+    if expanded_tests:
+        print(f"  Expanded test suite:  {len(expanded_tests)} questions (arena-generated)")
+    print(f"  Scoring method: boolean fact checks (keyword + LLM YES/NO fallback)")
     print()
 
-    # Score each solution
+    # Score each solution against original questions
     results = {}
     for name, folder, path in solutions:
         print(f"  Scoring {name}...", end=" ", flush=True)
-        # Load solution and collect answers
         ns = {}
         try:
             with open(path, encoding="utf-8") as f:
@@ -282,55 +316,89 @@ def cross_validate_support():
             answers.append({"question": tc["question"], "answer": ans})
 
         result = rubric_mod.score_all(answers, llm_module)
-        score = result["average_score"]
-        results[folder] = {"name": name, "score": score, "answers": answers}
-        print(f"{score:.2f}")
+        orig_score = result["average_score"]
 
-    # Also load original experiment scores for comparison
+        # Score against expanded suite if available
+        exp_score = None
+        if expanded_tests:
+            exp_score = _score_support_expanded(
+                answer_fn, expanded_tests, rubric_mod, llm_module, knowledge_base)
+
+        results[folder] = {
+            "name": name, "score": orig_score, "expanded_score": exp_score,
+            "answers": answers, "answer_fn": answer_fn,
+        }
+        if exp_score is not None:
+            print(f"original={orig_score:.2f}, expanded={exp_score:.2f}")
+        else:
+            print(f"{orig_score:.2f}")
+
+    # Print comparison table
     print()
-    print("  " + "-" * 70)
-    print(f"  {'Level':<25} {'Original Run':>14} {'Unified Judge':>14} {'Difference':>12}")
-    print("  " + "-" * 70)
+    if expanded_tests:
+        print("  " + "-" * 78)
+        print(f"  {'Level':<25} {'vs Original (10)':>16} {'vs Expanded (28)':>17} {'Original Run':>14}")
+        print("  " + "-" * 78)
+    else:
+        print("  " + "-" * 70)
+        print(f"  {'Level':<25} {'Original Run':>14} {'Unified Judge':>14} {'Difference':>12}")
+        print("  " + "-" * 70)
 
     for name, folder in LEVELS:
         if folder not in results:
             continue
-        unified = results[folder]["score"]
-        # Get original run score
+        r = results[folder]
         log_path = os.path.join(ROOT, folder, "results", "support", "experiment-log.json")
-        orig = None
+        orig_run = None
         if os.path.exists(log_path):
             with open(log_path) as f:
-                log = json.load(f)
-            orig = log.get("best_metric")
-        orig_str = f"{orig:.2f}" if orig is not None else "N/A"
-        diff = f"{unified - orig:+.2f}" if orig is not None else "N/A"
-        print(f"  {name:<25} {orig_str:>14} {unified:>14.2f} {diff:>12}")
+                orig_run = json.load(f).get("best_metric")
+        if expanded_tests:
+            orig_str = f"{orig_run:.2f}" if orig_run is not None else "N/A"
+            exp_str = f"{r['expanded_score']:.2f}" if r['expanded_score'] is not None else "N/A"
+            print(f"  {name:<25} {r['score']:>16.2f} {exp_str:>17} {orig_str:>14}")
+        else:
+            orig_str = f"{orig_run:.2f}" if orig_run is not None else "N/A"
+            diff = f"{r['score'] - orig_run:+.2f}" if orig_run is not None else "N/A"
+            print(f"  {name:<25} {orig_str:>14} {r['score']:>14.2f} {diff:>12}")
 
     if "baseline" in results:
-        print(f"  {'Baseline':<25} {'N/A':>14} {results['baseline']['score']:>14.2f} {'N/A':>12}")
+        r = results["baseline"]
+        if expanded_tests:
+            exp_str = f"{r['expanded_score']:.2f}" if r['expanded_score'] is not None else "N/A"
+            print(f"  {'Baseline':<25} {r['score']:>16.2f} {exp_str:>17} {'N/A':>14}")
+        else:
+            print(f"  {'Baseline':<25} {'N/A':>14} {r['score']:>14.2f} {'N/A':>12}")
 
-    print("  " + "-" * 70)
+    if expanded_tests:
+        print("  " + "-" * 78)
+    else:
+        print("  " + "-" * 70)
     print()
 
-    # Find winner
+    # Find winners
     level_results = {k: v for k, v in results.items() if k != "baseline"}
     if level_results:
-        winner = max(level_results.items(), key=lambda x: x[1]["score"])
-        print(f"  WINNER: {winner[1]['name']} with {winner[1]['score']:.2f}")
-        print(f"  (Rubric: boolean fact checks + LLM YES/NO, {len(test_cases)} questions)")
+        orig_winner = max(level_results.items(), key=lambda x: x[1]["score"])
+        print(f"  WINNER (original {len(test_cases)} questions): {orig_winner[1]['name']} with {orig_winner[1]['score']:.2f}")
+        if expanded_tests:
+            exp_winner = max(level_results.items(),
+                           key=lambda x: x[1]["expanded_score"] or 0)
+            print(f"  WINNER (expanded {len(expanded_tests)} questions): {exp_winner[1]['name']} with {exp_winner[1]['expanded_score']:.2f}")
     print()
 
-    # Save results for analyze_results.py to pick up
+    # Save results
     output_path = os.path.join(DIR, "results", "support", "cross_validation.json")
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     save_data = {
         "test_suite_size": len(test_cases),
+        "expanded_suite_size": len(expanded_tests) if expanded_tests else None,
         "scoring_method": "rubric",
         "judge_model": "gemini-2.5-flash",
-        "scores": {k: {"name": v["name"], "score": v["score"]} for k, v in results.items()},
+        "scores": {k: {"name": v["name"], "score": v["score"],
+                       "expanded_score": v.get("expanded_score")}
+                  for k, v in results.items()},
     }
-    # Add token usage
     usage = llm_module.get_token_usage()
     save_data["token_usage"] = usage
     cost = (

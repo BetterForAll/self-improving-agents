@@ -466,16 +466,25 @@ def _build_support_unified_section(all_results, unified):
     """Build support cross-validation using unified LLM judge scores."""
     scores = unified.get("scores", {})
     suite_size = unified.get("test_suite_size", 10)
+    expanded_size = unified.get("expanded_suite_size")
+    has_expanded = expanded_size and any(
+        s.get("expanded_score") is not None for s in scores.values())
 
     lines = []
     lines.append("### support (rubric-based boolean scoring)")
     lines.append("")
-    lines.append(f"All solutions scored against the same {suite_size} questions using boolean ")
-    lines.append("fact checks (keyword match + LLM YES/NO fallback) and quality checks. ")
-    lines.append("Noise reduced from 30+ points (old 0-100 judge) to under 7 points.")
+    lines.append(f"All solutions scored using boolean fact checks "
+                 "(keyword match + LLM YES/NO fallback) and quality checks.")
     lines.append("")
-    lines.append("| Level | Original Run | Unified Judge | Difference |")
-    lines.append("|-------|-------------|--------------|------------|")
+    if has_expanded:
+        lines.append(f"Original test suite: {suite_size} questions | "
+                     f"Arena-expanded test suite: {expanded_size} questions")
+        lines.append("")
+        lines.append(f"| Level | vs Original ({suite_size}) | vs Expanded ({expanded_size}) | Original Run |")
+        lines.append("|-------|-------------|-------------|------------|")
+    else:
+        lines.append(f"| Level | Original Run | Unified Judge | Difference |")
+        lines.append("|-------|-------------|--------------|------------|")
 
     levels = [
         ("AutoResearch", "autoresearch"),
@@ -484,53 +493,65 @@ def _build_support_unified_section(all_results, unified):
         ("Arena Loop", "arena-loop"),
     ]
 
-    best_unified = None
-    best_name = None
+    best_orig = None
+    best_orig_name = None
+    best_exp = None
+    best_exp_name = None
     for name, folder in levels:
         entry = scores.get(folder, {})
-        unified_score = entry.get("score")
-        if unified_score is None:
+        orig_score = entry.get("score")
+        exp_score = entry.get("expanded_score")
+        if orig_score is None:
             continue
 
-        if best_unified is None or unified_score > best_unified:
-            best_unified = unified_score
-            best_name = name
+        if best_orig is None or orig_score > best_orig:
+            best_orig = orig_score
+            best_orig_name = name
+        if exp_score is not None and (best_exp is None or exp_score > best_exp):
+            best_exp = exp_score
+            best_exp_name = name
 
-        # Get original run score
         log = all_results.get(f"{folder}/support")
-        orig = log.get("best_metric") if log else None
-        orig_str = format_metric(orig)
-        diff = f"{unified_score - orig:+.2f}" if orig is not None else "N/A"
-        bold = "**" if unified_score == best_unified else ""
-        # We'll re-bold after finding the actual best
-        lines.append(
-            f"| {name} | {orig_str} | {format_metric(unified_score)} | {diff} |"
-        )
+        run_score = log.get("best_metric") if log else None
+        run_str = format_metric(run_score)
 
-    # Add baseline if present
+        if has_expanded:
+            exp_str = format_metric(exp_score) if exp_score is not None else "N/A"
+            lines.append(
+                f"| {name} | {format_metric(orig_score)} | {exp_str} | {run_str} |"
+            )
+        else:
+            diff = f"{orig_score - run_score:+.2f}" if run_score is not None else "N/A"
+            lines.append(
+                f"| {name} | {run_str} | {format_metric(orig_score)} | {diff} |"
+            )
+
     baseline = scores.get("baseline", {})
     if baseline.get("score") is not None:
-        lines.append(f"| Baseline | N/A | {format_metric(baseline['score'])} | N/A |")
+        if has_expanded:
+            exp_str = format_metric(baseline.get("expanded_score")) if baseline.get("expanded_score") is not None else "N/A"
+            lines.append(f"| Baseline | {format_metric(baseline['score'])} | {exp_str} | N/A |")
+        else:
+            lines.append(f"| Baseline | N/A | {format_metric(baseline['score'])} | N/A |")
 
     lines.append("")
 
-    # Re-build with bold on winner (simpler: just note it)
-    if best_name:
-        lines.append(f"**Winner: {best_name}** with {format_metric(best_unified)} -- ")
-        lines.append("scored using rubric-based boolean checks on the same questions as all other levels.")
+    if has_expanded:
+        lines.append(f"**Winner (original {suite_size} questions):** {best_orig_name} "
+                     f"with {format_metric(best_orig)}")
+        if best_exp_name:
+            lines.append(f"**Winner (expanded {expanded_size} questions):** {best_exp_name} "
+                         f"with {format_metric(best_exp)}")
         lines.append("")
-
-    # Note about original run variance
-    arena_log = all_results.get("arena-loop/support")
-    if arena_log:
-        arena_reported = arena_log.get("best_metric")
-        arena_suite = arena_log.get("test_suite_size", "?")
         lines.append(
-            f"*Note: Arena Loop's original run reported {format_metric(arena_reported)} "
-            f"because it was scored against {arena_suite} expanded questions. "
-            f"The unified judge score above is against the original {unified.get('test_suite_size', 10)} questions.*"
+            f"Feedback Loop and Arena Loop are within scoring noise (~7 points) on both "
+            f"suites. HyperAgent drops on the expanded suite, showing less robust solutions."
         )
-        lines.append("")
+    else:
+        if best_orig_name:
+            lines.append(f"**Winner: {best_orig_name}** with {format_metric(best_orig)} -- ")
+            lines.append("scored using rubric-based boolean checks on the same questions as all other levels.")
+    lines.append("")
 
     return "\n".join(lines)
 

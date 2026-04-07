@@ -1,0 +1,36 @@
+{
+  "step": 4,
+  "run_id": "run_20260407_104618",
+  "best_metric": 58.36,
+  "baseline_metric": null,
+  "history": [
+    {
+      "step": 1,
+      "action": "ACCEPTED",
+      "proposed_metric": 48.64,
+      "previous_metric": 21.3,
+      "improvement": "128.4% better"
+    },
+    {
+      "step": 2,
+      "action": "ACCEPTED",
+      "proposed_metric": 56.14,
+      "previous_metric": 48.64,
+      "improvement": "15.4% better"
+    },
+    {
+      "step": 3,
+      "action": "ACCEPTED",
+      "proposed_metric": 58.36,
+      "previous_metric": 56.14,
+      "improvement": "4.0% better"
+    },
+    {
+      "step": 4,
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 56.14,
+      "previous_metric": 58.36
+    }
+  ]
+}

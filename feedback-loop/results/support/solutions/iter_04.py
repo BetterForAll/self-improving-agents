@@ -1,31 +1,10 @@
 import re
 
-# Define a simple set of stop words as a global frozenset for efficiency.
-# Moving it outside the function prevents re-initialization on every call.
-_STOP_WORDS = frozenset([
-    "what", "is", "the", "a", "an", "how", "where", "can", "i", "my", "me",
-    "for", "of", "and", "or", "to", "in", "on", "at", "with", "about",
-    "do", "does", "are", "you", "your", "it", "its", "we", "our", "us",
-    "he", "she", "they", "them", "their", "this", "that", "these", "those",
-    "be", "been", "was", "were", "has", "have", "had", "will", "would",
-    "should", "could", "may", "might", "must", "if", "then", "than", "but",
-    "not", "no", "yes", "please", "thank", "help", "information",
-    "tell", "me", "from", "by", "as", "into", "through", "during",
-    "before", "after", "above", "below", "up", "down", "out", "off", "over",
-    "under", "again", "further", "once", "here", "there", "when",
-    "why", "who", "whom", "each", "few", "more", "most", "other", "some",
-    "such", "nor", "only", "own", "same", "so", "too", "very", "s", "t",
-    "just", "don", "now"
-])
-
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
 
-    This improved version extracts keywords from the question, searches the
-    knowledge base for sentences containing those keywords, and returns
-    the most relevant sentences as the answer. It enhances relevance scoring
-    by considering whether all question keywords are present, and prefers
-    shorter, more concise relevant sentences.
+    This improved version uses keyword matching to find relevant sentences in the
+    knowledge base and constructs an answer from them.
 
     Args:
         question: str, the customer's question
@@ -33,102 +12,92 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
-    question_lower = question.lower()
+    # 1. Preprocessing and Keyword Extraction
+    # Helper function to convert text to lowercase and remove most punctuation, keeping alphanumeric characters.
+    def preprocess_text(text):
+        text = text.lower()
+        # Remove punctuation, keeping only letters, numbers, and spaces.
+        text = re.sub(r'[^\w\s]', '', text)
+        return text
 
-    # Extract keywords from the question:
-    # 1. Remove punctuation using regex.
-    # 2. Split into words.
-    # 3. Filter out stop words and very short words (length < 3).
-    question_words_raw = re.findall(r'\b\w+\b', question_lower)
-    keywords = [word for word in question_words_raw if word not in _STOP_WORDS and len(word) > 2]
-    
-    # Create a set of unique keywords for faster lookups and to check if all keywords are matched.
-    keywords_set = set(keywords)
+    processed_question = preprocess_text(question)
+    # Convert to a set for faster lookup and to remove duplicate words
+    question_words = set(processed_question.split())
 
-    if not keywords:
-        return "I'm sorry, I couldn't understand your question. Could you please rephrase it?"
+    # A basic list of common English stop words to filter out less meaningful words
+    stop_words = set([
+        "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+        "and", "or", "but", "if", "then", "else", "when", "where", "why", "how",
+        "for", "at", "by", "from", "in", "on", "out", "over", "under", "up", "down",
+        "to", "of", "with", "about", "above", "below", "before", "after", "through",
+        "again", "further", "then", "once", "here", "there", "what", "which", "who",
+        "whom", "this", "that", "these", "those", "am", "i", "me", "my", "myself",
+        "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself",
+        "he", "him", "his", "himself", "she", "her", "hers", "herself",
+        "it", "its", "itself", "they", "them", "their", "theirs", "themselves",
+        "do", "does", "did", "doing", "have", "has", "had", "having", "will", "would",
+        "can", "could", "should", "may", "might", "must", "say", "said", "get", "got",
+        "please", "thank", "you", "could", "help", "me", "know", "want", "tell"
+    ])
 
-    # Split the knowledge base into individual sentences for more granular search.
-    # We use a regex to split by common sentence terminators (., !, ?),
-    # keeping the terminator with the sentence and allowing for optional spaces after it.
-    sentences = re.split(r'(?<=[.!?])\s*', knowledge_base)
-    # Filter out any empty strings that might result from splitting and strip whitespace.
-    sentences = [s.strip() for s in sentences if s.strip()]
+    # Filter out stop words and single-letter words from the question to get meaningful keywords
+    keywords = {word for word in question_words if word not in stop_words and len(word) > 1}
 
-    # Dictionary to store sentences along with their detailed relevance scores.
-    # Scores include unique matches, total occurrences, a bonus for containing all question keywords,
-    # and the sentence length (for preferring brevity).
-    relevant_sentences_info = {}
+    # If all potential keywords were stop words or too short, or the question was very short/empty,
+    # use all original question words as a fallback to avoid an empty keyword set.
+    if not keywords and question_words:
+        keywords = question_words
+    elif not keywords: # If question_words itself was empty after processing (e.g., empty string question)
+        return "I apologize, but I couldn't understand your question. Please provide more details."
 
-    for sentence in sentences:
-        sentence_lower = sentence.lower()
-        # Extract words from the sentence to determine its length
-        sentence_words = re.findall(r'\b\w+\b', sentence_lower)
-        
-        current_total_occurrences = 0
-        current_unique_matched_keywords = set()
 
-        for keyword in keywords_set: # Iterate over unique keywords for efficiency
-            # Use regex to find whole word matches. re.escape() handles special characters.
-            # re.finditer() counts all occurrences of the keyword within the sentence.
-            for match in re.finditer(r'\b' + re.escape(keyword) + r'\b', sentence_lower):
-                current_total_occurrences += 1
-                current_unique_matched_keywords.add(keyword)
-        
-        unique_matches_count = len(current_unique_matched_keywords)
+    # 2. Split knowledge_base into sentences
+    # A robust regex for splitting text into sentences.
+    # It handles common sentence endings (., ?, !) and tries to avoid splitting on abbreviations or decimal points.
+    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', knowledge_base)
 
-        if unique_matches_count > 0:
-            # Assign a bonus if the sentence contains all unique keywords extracted from the question.
-            # This prioritizes sentences that fully address the query.
-            contains_all_keywords_bonus = 1 if current_unique_matched_keywords == keywords_set else 0
+    relevant_sentences = []
+    # Score each sentence based on keyword overlap with the question
+    for sentence_original in sentences:
+        if not sentence_original.strip(): # Skip empty or whitespace-only sentences
+            continue
 
-            relevant_sentences_info[sentence] = {
-                "unique_matches": unique_matches_count,
-                "total_occurrences": current_total_occurrences,
-                "contains_all_keywords_bonus": contains_all_keywords_bonus,
-                "sentence_length": len(sentence_words) # Store length to prefer shorter sentences
-            }
+        processed_sentence = preprocess_text(sentence_original)
+        sentence_words = set(processed_sentence.split())
 
-    # Sort sentences by relevance using a multi-criteria key:
-    # 1. Sentences with 'contains_all_keywords_bonus' (1) are ranked highest.
-    # 2. Then, sentences with more unique keyword matches.
-    # 3. Then, sentences with more total keyword occurrences.
-    # 4. Finally, shorter sentences are preferred (by sorting negative length in descending order).
-    sorted_sentences_with_scores = sorted(
-        relevant_sentences_info.items(),
-        key=lambda item: (item[1]["contains_all_keywords_bonus"],
-                          item[1]["unique_matches"],
-                          item[1]["total_occurrences"],
-                          -item[1]["sentence_length"]), # Negative length sorts shorter sentences first in reverse=True order
-        reverse=True # Descending order for most relevant first
-    )
+        # Calculate the number of overlapping keywords between the question and the sentence
+        common_words_count = len(keywords.intersection(sentence_words))
 
-    # Construct the answer from the most relevant sentences.
-    answer_parts = []
-    
-    # Threshold for a sentence to be considered relevant enough to include:
-    # it must contain at least one unique keyword from the question.
-    min_unique_keyword_matches_per_sentence = 1 
-    
-    # Limit the number of sentences in the answer for conciseness.
-    max_sentences_in_answer = 3
+        # A sentence is considered relevant if it shares at least one keyword.
+        # More sophisticated scoring could involve TF-IDF or word embeddings, but this is a simple baseline improvement.
+        if common_words_count > 0:
+            # Store the relevance score and the original sentence (to preserve its casing and punctuation)
+            relevant_sentences.append((common_words_count, sentence_original))
 
-    for sentence, scores in sorted_sentences_with_scores:
-        if scores["unique_matches"] >= min_unique_keyword_matches_per_sentence:
-            answer_parts.append(sentence)
-            if len(answer_parts) >= max_sentences_in_answer:
+    # Sort sentences by their relevance score in descending order
+    relevant_sentences.sort(key=lambda x: x[0], reverse=True)
+
+    # 3. Construct the answer from the most relevant sentences
+    if relevant_sentences:
+        answer_parts = []
+        seen_sentences = set() # Use a set to prevent adding duplicate sentences to the answer
+
+        # Take the top N most relevant and unique sentences to form the answer.
+        # Limiting to 3 sentences to keep the answer concise.
+        for score, sentence_text in relevant_sentences:
+            cleaned_sentence = sentence_text.strip()
+            if cleaned_sentence and cleaned_sentence not in seen_sentences:
+                answer_parts.append(cleaned_sentence)
+                seen_sentences.add(cleaned_sentence)
+            if len(answer_parts) >= 3: # Stop after collecting the top 3 unique sentences
                 break
-    
-    if answer_parts:
-        # Join the selected sentences to form the answer.
-        final_answer = " ".join(answer_parts)
-        
-        # Clean up any potential extra spaces and ensure the answer ends with punctuation.
-        final_answer = final_answer.strip()
-        if not final_answer.endswith(('.', '!', '?')):
+
+        final_answer = " ".join(answer_parts).strip()
+
+        # Ensure the final answer ends with a punctuation mark if it's a statement
+        if final_answer and not final_answer.endswith(('.', '?', '!')):
             final_answer += "."
-        
         return final_answer
     else:
-        # Fallback if no sufficiently relevant sentences were found in the knowledge base.
-        return "I couldn't find specific information matching your question in our knowledge base. Please visit our website for more information or try rephrasing your question."
+        # Fallback response if no relevant information is found in the knowledge base
+        return "I apologize, but I couldn't find a direct answer to your question in our knowledge base. Please try rephrasing your question or visit our website for more information."

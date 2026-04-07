@@ -156,7 +156,7 @@ def run_experiment(iterations=5, resume=True, task_name="snake", run_id=None):
                 "issue_type": fb.get("issue_type"),
                 "confidence": fb.get("confidence"),
                 "pattern": fb.get("pattern_detected"),
-                "suggestion": fb.get("fix_suggestion", "")[:200],
+                "suggestion": (fb.get("fix_suggestion") or "")[:200],
             })
 
     metric_name = results.get("metric_name", "time_ms")
@@ -190,7 +190,7 @@ def run_experiment(iterations=5, resume=True, task_name="snake", run_id=None):
     log["severity_counts"] = severity_counts
     log["patterns_detected"] = patterns_detected
     log["feedback_log"] = feedback_log
-    if not higher_is_better and results["best_metric"] > 0:
+    if not higher_is_better and results.get("baseline_metric") and results["best_metric"] > 0:
         log["speedup"] = round(results["baseline_metric"] / results["best_metric"], 1)
     else:
         log["speedup"] = None
@@ -205,8 +205,10 @@ def run_experiment(iterations=5, resume=True, task_name="snake", run_id=None):
     print(f"  Metric         : {metric_name}")
     print(f"  Duration       : {log['elapsed_seconds']} seconds")
     print(f"  Iterations     : {log['iterations']}")
-    print(f"  Baseline       : {log['baseline_metric']:.3f}")
-    print(f"  Best achieved  : {log['best_metric']:.3f}")
+    baseline = log.get('baseline_metric')
+    best = log.get('best_metric')
+    print(f"  Baseline       : {baseline:.3f}" if baseline is not None else "  Baseline       : N/A")
+    print(f"  Best achieved  : {best:.3f}" if best is not None else "  Best achieved  : N/A")
     if log.get("speedup") is not None:
         print(f"  Speedup        : {log['speedup']}x")
     print(f"  Accepted       : {log['accepted']}")

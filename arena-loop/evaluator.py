@@ -4,6 +4,7 @@ TaskEvaluator -- wraps task-specific benchmarking, test generation, and suite ma
 One interface for all task types: deterministic, adversarial, LLM-as-judge.
 """
 
+import importlib.util
 import json
 import os
 import sys
@@ -15,6 +16,15 @@ from tasks.task_runner import write_solution, run_solution
 
 import llm
 import test_agent
+
+# Load rubric module for support task scoring
+_rubric_path = os.path.join(DIR, "..", "tasks", "support", "rubric.py")
+if os.path.exists(_rubric_path):
+    _rubric_spec = importlib.util.spec_from_file_location("rubric", _rubric_path)
+    _rubric_mod = importlib.util.module_from_spec(_rubric_spec)
+    _rubric_spec.loader.exec_module(_rubric_mod)
+else:
+    _rubric_mod = None
 
 class TaskEvaluator:
     """Wraps task-specific benchmarking, test generation, and suite management."""
@@ -110,7 +120,6 @@ class TaskEvaluator:
 
     def _score_support_quality(self, code, test_suite):
         ns = {}
-        # Run the code string in an isolated namespace to extract functions from it
         try:
             exec(compile(code, "<agent>", "exec"), ns)
         except Exception:
@@ -118,9 +127,8 @@ class TaskEvaluator:
         fn = ns.get("answer_question")
         if fn is None:
             return 0.0
-        qa_pairs = self._build_qa_pairs(fn, test_suite)
-        raw = llm.ask(self._judge_prompt(qa_pairs))
-        return self._parse_judge_avg(raw)
+        scores = self._rubric_score_each(fn, test_suite)
+        return sum(scores) / len(scores) if scores else 0.0
 
     def _score_questions(self, code, test_cases):
         ns = {}
@@ -131,49 +139,33 @@ class TaskEvaluator:
         fn = ns.get("answer_question")
         if fn is None:
             return [0.0] * len(test_cases)
-        qa_pairs = self._build_qa_pairs(fn, test_cases)
-        raw = llm.ask(self._judge_prompt(qa_pairs))
-        return self._parse_judge_list(raw, len(test_cases))
+        return self._rubric_score_each(fn, test_cases)
 
-    def _build_qa_pairs(self, fn, test_cases):
-        parts = []
-        for i, tc in enumerate(test_cases):
+    def _rubric_score_each(self, fn, test_cases):
+        scores = []
+        for tc in test_cases:
             try:
                 answer = str(fn(tc["question"], self.kb))
             except Exception:
-                answer = "ERROR: function crashed"
-            parts.append(f"\nQuestion {i+1}: {tc['question']}\n"
-                         f"Expected: {tc['expected']}\nActual: {answer}")
-        return "".join(parts)
+                scores.append(0.0)
+                continue
+            rubric_entry = self._get_rubric_entry(tc)
+            if rubric_entry and _rubric_mod:
+                result = _rubric_mod.score_answer(rubric_entry, answer, llm)
+                scores.append(result["score"])
+            else:
+                scores.append(0.0)
+        return scores
 
-    def _judge_prompt(self, qa_pairs):
-        return (
-            "You are a quality judge for a customer support AI. Score each answer 0-100.\n\n"
-            "Criteria: Accuracy (40%), Completeness (30%), Tone (15%), Conciseness (15%).\n\n"
-            f"ANSWERS:{qa_pairs}\n\n"
-            'Return ONLY JSON: {"scores": [score1, score2, ...], "average": average_score}')
-
-    def _parse_judge_avg(self, response):
-        import re
-        text = response.strip()
-        if text.startswith("```"):
-            lines = text.splitlines()
-            text = "\n".join(lines[1:-1])
-        try:
-            return float(json.loads(text).get("average", 0))
-        except (json.JSONDecodeError, ValueError):
-            numbers = re.findall(r'\d+\.?\d*', text)
-            return float(numbers[-1]) if numbers else 0.0
-
-    def _parse_judge_list(self, response, n):
-        text = response.strip()
-        if text.startswith("```"):
-            lines = text.splitlines()
-            text = "\n".join(lines[1:-1])
-        try:
-            return [float(s) for s in json.loads(text).get("scores", [])]
-        except (json.JSONDecodeError, ValueError):
-            return [50.0] * n
+    def _get_rubric_entry(self, tc):
+        if tc.get("fact_checks"):
+            return tc
+        if not _rubric_mod:
+            return None
+        for entry in _rubric_mod.RUBRIC:
+            if entry["question"].strip() == tc["question"].strip():
+                return entry
+        return None
 
     def _count_validation_failures(self, code, test_cases):
         ns = {}

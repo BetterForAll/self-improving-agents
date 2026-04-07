@@ -27,10 +27,13 @@ def reset_token_usage():
         _token_usage[key] = 0
 
 
-def ask(prompt, max_retries=3):
+def ask(prompt, max_retries=3, timeout=180):
     for attempt in range(max_retries):
         try:
-            response = client.models.generate_content(model=MODEL, contents=prompt)
+            response = client.models.generate_content(
+                model=MODEL, contents=prompt,
+                config={"http_options": {"timeout": timeout * 1000}},
+            )
             if not response.candidates:
                 raise RuntimeError("Gemini returned no candidates (possibly blocked)")
             # Track tokens

@@ -1,93 +1,67 @@
 {
   "status": "completed",
-  "run_id": "run_20260404_231211",
-  "started_at": "2026-04-04 23:12:11",
+  "run_id": "run_20260407_104618",
+  "started_at": "2026-04-07 10:46:18",
   "task": "support",
   "metric_name": "quality_score",
   "higher_is_better": true,
-  "baseline_metric": 10.0,
-  "best_metric": 40.2,
-  "iterations": 10,
+  "baseline_metric": 21.3,
+  "best_metric": 58.36,
+  "iterations": 6,
   "history": [
     {
       "step": 1,
       "action": "ACCEPTED",
-      "proposed_metric": 32.2,
-      "previous_metric": 10.0,
-      "improvement": "222.0% better"
+      "proposed_metric": 48.64,
+      "previous_metric": 21.3,
+      "improvement": "128.4% better"
     },
     {
       "step": 2,
-      "action": "REJECTED",
-      "reason": "worse than current best",
-      "proposed_metric": 23.0,
-      "previous_metric": 32.2
+      "action": "ACCEPTED",
+      "proposed_metric": 56.14,
+      "previous_metric": 48.64,
+      "improvement": "15.4% better"
     },
     {
       "step": 3,
       "action": "ACCEPTED",
-      "proposed_metric": 35.2,
-      "previous_metric": 32.2,
-      "improvement": "9.3% better"
+      "proposed_metric": 58.36,
+      "previous_metric": 56.14,
+      "improvement": "4.0% better"
     },
     {
       "step": 4,
-      "action": "ERROR",
-      "error": "Traceback (most recent call last):\n  File \"C:\\Users\\befre\\Documents\\Code\\self-improving-agents\\tasks\\support\\benchmark.py\", line 28, in <module>\n    exec(compile(f.read(), solution_file, \"exec\"), ns)\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\befre\\Documents\\Code\\self-improving-agents\\autoresearch\\solution_support.py\", line 114\n    is_storage_query_keywords = any(keyword in question_lower for keyword in [\"storage\", \"gb\", \"tb\", \"space\", \"limit\", \"capacity\"]):\n             "
+      "action": "REJECTED",
+      "reason": "worse than current best",
+      "proposed_metric": 56.14,
+      "previous_metric": 58.36
     },
     {
       "step": 5,
       "action": "REJECTED",
       "reason": "worse than current best",
-      "proposed_metric": 17.1,
-      "previous_metric": 35.2
+      "proposed_metric": 56.14,
+      "previous_metric": 58.36
     },
     {
       "step": 6,
-      "action": "ACCEPTED",
-      "proposed_metric": 38.9,
-      "previous_metric": 35.2,
-      "improvement": "10.5% better"
-    },
-    {
-      "step": 7,
       "action": "REJECTED",
       "reason": "worse than current best",
-      "proposed_metric": 10.7,
-      "previous_metric": 38.9
-    },
-    {
-      "step": 8,
-      "action": "REJECTED",
-      "reason": "worse than current best",
-      "proposed_metric": 10.2,
-      "previous_metric": 38.9
-    },
-    {
-      "step": 9,
-      "action": "ACCEPTED",
-      "proposed_metric": 40.2,
-      "previous_metric": 38.9,
-      "improvement": "3.3% better"
-    },
-    {
-      "step": 10,
-      "action": "REJECTED",
-      "reason": "worse than current best",
-      "proposed_metric": 36.6,
-      "previous_metric": 40.2
+      "proposed_metric": 56.14,
+      "previous_metric": 58.36
     }
   ],
-  "completed_at": "2026-04-04 23:24:21",
-  "elapsed_seconds": 730.5,
-  "accepted": 4,
-  "rejected": 5,
-  "errors": 1,
+  "completed_at": "2026-04-07 11:04:37",
+  "elapsed_seconds": 1098.6,
+  "accepted": 3,
+  "rejected": 3,
+  "errors": 0,
   "token_usage": {
-    "prompt_tokens": 39373,
-    "completion_tokens": 36743,
-    "total_tokens": 226128,
-    "calls": 20
+    "prompt_tokens": 76171,
+    "completion_tokens": 22671,
+    "total_tokens": 266925,
+    "calls": 376
   },
-  "estimated_cost_usd": 0.1037
+  "estimated_cost_usd": 0.0795
 }
