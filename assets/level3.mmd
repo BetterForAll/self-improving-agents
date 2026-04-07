@@ -1,0 +1,11 @@
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '14px'}}}%%
+graph LR
+    LLM3[LLM] -->|proposes| Code3[Code]
+    Code3 -->|runs| Bench3[Benchmark]
+    Bench3 -->|results| Meta3[Meta Agent]
+    Meta3 -.->|rewrites agent source code| LLM3
+
+    style LLM3 fill:#7e57c2,color:#fff
+    style Code3 fill:#42a5f5,color:#fff
+    style Bench3 fill:#26a69a,color:#fff
+    style Meta3 fill:#ef5350,color:#fff

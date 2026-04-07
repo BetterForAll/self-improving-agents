@@ -1,0 +1,9 @@
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '14px'}}}%%
+graph LR
+    LLM1[LLM] -->|proposes| Code1[Code]
+    Code1 -->|runs| Bench1[Benchmark]
+    Bench1 -->|keep/revert| LLM1
+
+    style LLM1 fill:#7e57c2,color:#fff
+    style Code1 fill:#42a5f5,color:#fff
+    style Bench1 fill:#26a69a,color:#fff

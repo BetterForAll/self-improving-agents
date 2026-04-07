@@ -1,0 +1,12 @@
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '14px'}}}%%
+graph LR
+    LLM4[LLM x4] -->|proposes| Code4[Code]
+    Code4 -->|runs| Bench4[Benchmark]
+    Bench4 -->|tournament selection| LLM4
+    Test4[Test Agents] -->|harder tests| Bench4
+    Bench4 -->|weaknesses| Test4
+
+    style LLM4 fill:#7e57c2,color:#fff
+    style Code4 fill:#42a5f5,color:#fff
+    style Bench4 fill:#26a69a,color:#fff
+    style Test4 fill:#ef5350,color:#fff

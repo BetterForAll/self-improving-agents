@@ -7,11 +7,20 @@ Independent research comparing existing approaches to self-improving code agents
 and proposing new ones.
 
 - **Level 1:** LLM improves code against a benchmark (a la Karpathy's AutoResearch).
+
+![Level 1: AutoResearch Loop](assets/level1.png)
+
 - **Level 2:** A reviewer explains WHY it failed and suggests specific fixes (my contribution, built independently in Feb 2026 -- before AutoResearch and HyperAgents were published).
+
+![Level 2: Feedback Loop](assets/level2.png)
+
 - **Level 3:** The agent rewrites its own source code (inspired by Meta's HyperAgents).
+
+![Level 3: HyperAgent Loop](assets/level3.png)
+
 - **Level 4:** The agent rewrites its own code AND the benchmark itself evolves (my proposed next step).
 
-![Architecture](assets/architecture.png)
+![Level 4: Arena Loop](assets/level4.png)
 
 ---
 

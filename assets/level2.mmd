@@ -1,0 +1,11 @@
+%%{init: {'theme': 'base', 'themeVariables': {'fontSize': '14px'}}}%%
+graph LR
+    LLM2[LLM] -->|proposes| Code2[Code]
+    Code2 -->|runs| Bench2[Benchmark]
+    Bench2 -->|results| Reviewer2[Reviewer]
+    Reviewer2 -->|WHY + fix suggestions| LLM2
+
+    style LLM2 fill:#7e57c2,color:#fff
+    style Code2 fill:#42a5f5,color:#fff
+    style Bench2 fill:#26a69a,color:#fff
+    style Reviewer2 fill:#ef5350,color:#fff
