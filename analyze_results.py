@@ -149,21 +149,24 @@ TASK_EXPLANATIONS = {
             "Customer support Q&A is an **LLM-as-judge** task: the solution answers customer "
             "questions about a product, and a separate LLM call scores each answer's quality "
             "(0-100). Baselines vary across levels (5.0-15.0) because the LLM judge is "
-            "non-deterministic -- the same initial code gets different scores each run."
+            "non-deterministic -- the same initial code gets different scores each run. "
+            "The \"Unified Judge\" column shows all solutions re-scored by the same judge "
+            "in a single session for a fair comparison."
         ),
         "why_scores_differ": (
-            "Feedback Loop (66.5) and HyperAgent (66.3) both reached similar peaks -- "
-            "structured feedback is highly effective for subjective quality tasks where the "
-            "reviewer can explain \"this answer is missing the pricing details\" rather than "
-            "just reporting a lower score. AutoResearch reached 40.2, limited by its inability "
-            "to articulate what's wrong with an answer."
+            "The unified judge (3x averaged) gives the fairest ranking. All levels' solutions "
+            "are keyword-matching heuristics of varying quality -- none use the LLM for answering, "
+            "so scores reflect how well each level's improvement loop refined the matching logic.\n\n"
+            "**Why LLM-as-judge scores vary so much:** A single judge call can swing by 30+ points "
+            "for the same solution. The original run scored HyperAgent at 66.3 and Arena Loop at "
+            "22.39, but both were noisy. With 3x averaged judging, scores stabilize and the true "
+            "ranking emerges. This is why the JUDGE_RUNS=3 fix was added to tasks/support/config.py."
         ),
         "arena_note": (
-            "**Arena Loop's reported score of 22.39 is misleading.** It is scored against an "
-            "expanded test suite of 28 adversarial questions, while Levels 1-3 are scored against "
-            "the original 10 questions. Arena Loop's pre-expansion peak was actually **67.63** "
-            "(round 4, scored against the original 10 questions) -- the highest of all levels. "
-            "See Cross-Validation below for the fair comparison."
+            "**Arena Loop's reported Best of 22.39 is misleading.** It was scored against an "
+            "expanded test suite of 28 adversarial questions, not the original 10. The unified "
+            "judge column shows its score on the original questions for a fair comparison. "
+            "See Cross-Validation below for the full data."
         ),
     },
 }
@@ -200,6 +203,7 @@ def build_per_task_section(all_results, task):
     arena_expanded = False
     arena_peak = None
     arena_peak_round = None
+    unified_scores = None
     if arena_log:
         suite_size = arena_log.get("test_suite_size")
         arena_peak, arena_peak_round = _get_arena_pre_expansion_peak(all_results, task)
@@ -211,9 +215,18 @@ def build_per_task_section(all_results, task):
                 if relative_diff > 0.05:
                     arena_expanded = True
 
+        # Check for unified cross-validation scores (support task)
+        unified_path = os.path.join(ROOT, "arena-loop", "results", task,
+                                     "cross_validation.json")
+        if os.path.exists(unified_path):
+            with open(unified_path) as f:
+                unified_data = json.load(f)
+            unified_scores = {k: v["score"] for k, v in unified_data.get("scores", {}).items()}
+
     if arena_expanded:
-        lines.append(f"| Level | Baseline | Best | vs Original* | Accepted/Total | Duration (s) | LLM Calls |")
-        lines.append(f"|-------|----------|------|--------------|----------------|--------------|-----------|")
+        col_name = "Unified Judge*" if unified_scores else "vs Original*"
+        lines.append(f"| Level | Baseline | Best | {col_name} | Accepted/Total | Duration (s) | LLM Calls |")
+        lines.append(f"|-------|----------|------|{'--' * (len(col_name) // 2 + 1)}|----------------|--------------|-----------|")
     else:
         lines.append(f"| Level | Baseline | Best | Accepted/Total | Duration (s) | LLM Calls |")
         lines.append(f"|-------|----------|------|----------------|--------------|-----------|")
@@ -235,10 +248,13 @@ def build_per_task_section(all_results, task):
             progress = f"{accepted}/{total}"
 
         if arena_expanded:
-            if level_info["folder"] == "arena-loop":
+            if unified_scores:
+                # Use unified judge scores for all levels
+                uscore = unified_scores.get(level_info["folder"])
+                vs_orig = f"**{format_metric(uscore)}**" if uscore is not None else "N/A"
+            elif level_info["folder"] == "arena-loop":
                 vs_orig = f"**{format_metric(arena_peak)}**"
             else:
-                # Levels 1-3 Best IS vs original (they only have original tests)
                 vs_orig = best
             lines.append(
                 f"| {level_info['name']} | {baseline} | {best} | {vs_orig} | "
@@ -252,13 +268,22 @@ def build_per_task_section(all_results, task):
 
     if arena_expanded:
         lines.append("")
-        lines.append(
-            f"*\"vs Original\" = score against the original test suite only. "
-            f"For Levels 1-3 this is the same as Best (they only have original tests). "
-            f"For Arena Loop, Best is scored against the expanded suite "
-            f"({arena_log.get('test_suite_size', '?')} cases); vs Original shows the "
-            f"pre-expansion peak (round {arena_peak_round}) for fair comparison.*"
-        )
+        if unified_scores:
+            lines.append(
+                f"*\"Unified Judge\" = all solutions scored by the same LLM judge in a "
+                f"single session against the original {unified_data.get('test_suite_size', 10)} "
+                f"questions. This eliminates inter-session judge variance. "
+                f"Arena Loop's Best ({format_metric(arena_log.get('best_metric'))}) was scored "
+                f"against the expanded suite ({arena_log.get('test_suite_size', '?')} cases).*"
+            )
+        else:
+            lines.append(
+                f"*\"vs Original\" = score against the original test suite only. "
+                f"For Levels 1-3 this is the same as Best (they only have original tests). "
+                f"For Arena Loop, Best is scored against the expanded suite "
+                f"({arena_log.get('test_suite_size', '?')} cases); vs Original shows the "
+                f"pre-expansion peak (round {arena_peak_round}) for fair comparison.*"
+            )
 
     lines.append("")
 
@@ -418,11 +443,101 @@ def _build_email_cross_validation(all_results):
 
 
 def _build_support_cross_validation(all_results):
-    """Cross-validation for support using pre_expansion_metric from arena history."""
+    """Cross-validation for support. Uses unified judge scores if available."""
     arena_log = all_results.get("arena-loop/support")
     if not arena_log:
         return ""
 
+    # Check for unified cross-validation results (from cross_validate.py --task support)
+    unified_path = os.path.join(ROOT, "arena-loop", "results", "support",
+                                 "cross_validation.json")
+    has_unified = os.path.exists(unified_path)
+
+    if has_unified:
+        with open(unified_path) as f:
+            unified = json.load(f)
+        return _build_support_unified_section(all_results, unified)
+
+    # Fallback: pre-expansion metric comparison
+    return _build_support_pre_expansion_section(all_results)
+
+
+def _build_support_unified_section(all_results, unified):
+    """Build support cross-validation using unified LLM judge scores."""
+    scores = unified.get("scores", {})
+    suite_size = unified.get("test_suite_size", 10)
+
+    lines = []
+    lines.append("### support (unified LLM judge -- same judge, same session)")
+    lines.append("")
+    lines.append(f"All solutions scored against the same {suite_size} questions by the same ")
+    lines.append("LLM judge in a single session. This eliminates inter-session variance ")
+    lines.append("and gives a true apples-to-apples comparison.")
+    lines.append("")
+    lines.append("| Level | Original Run | Unified Judge | Difference |")
+    lines.append("|-------|-------------|--------------|------------|")
+
+    levels = [
+        ("AutoResearch", "autoresearch"),
+        ("Feedback Loop", "feedback-loop"),
+        ("HyperAgent", "hyperagent"),
+        ("Arena Loop", "arena-loop"),
+    ]
+
+    best_unified = None
+    best_name = None
+    for name, folder in levels:
+        entry = scores.get(folder, {})
+        unified_score = entry.get("score")
+        if unified_score is None:
+            continue
+
+        if best_unified is None or unified_score > best_unified:
+            best_unified = unified_score
+            best_name = name
+
+        # Get original run score
+        log = all_results.get(f"{folder}/support")
+        orig = log.get("best_metric") if log else None
+        orig_str = format_metric(orig)
+        diff = f"{unified_score - orig:+.2f}" if orig is not None else "N/A"
+        bold = "**" if unified_score == best_unified else ""
+        # We'll re-bold after finding the actual best
+        lines.append(
+            f"| {name} | {orig_str} | {format_metric(unified_score)} | {diff} |"
+        )
+
+    # Add baseline if present
+    baseline = scores.get("baseline", {})
+    if baseline.get("score") is not None:
+        lines.append(f"| Baseline | N/A | {format_metric(baseline['score'])} | N/A |")
+
+    lines.append("")
+
+    # Re-build with bold on winner (simpler: just note it)
+    if best_name:
+        lines.append(f"**Winner: {best_name}** with {format_metric(best_unified)} -- ")
+        lines.append("scored by the same judge on the same questions as all other levels.")
+        lines.append("")
+
+    # Note about original run variance
+    arena_log = all_results.get("arena-loop/support")
+    if arena_log:
+        arena_reported = arena_log.get("best_metric")
+        arena_suite = arena_log.get("test_suite_size", "?")
+        lines.append(
+            f"*Note: Arena Loop's original run reported {format_metric(arena_reported)} "
+            f"because it was scored against {arena_suite} expanded questions. "
+            f"The unified judge score above is against the original {unified.get('test_suite_size', 10)} questions.*"
+        )
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _build_support_pre_expansion_section(all_results):
+    """Fallback: support comparison using pre_expansion_metric from arena history."""
+    arena_log = all_results.get("arena-loop/support")
     peak_pre, peak_round = _get_arena_pre_expansion_peak(all_results, "support")
     if peak_pre is None:
         return ""
@@ -432,6 +547,9 @@ def _build_support_cross_validation(all_results):
 
     lines = []
     lines.append("### support (pre-expansion fairness comparison)")
+    lines.append("")
+    lines.append("*No unified cross-validation data found. Run `python arena-loop/cross_validate.py "
+                 "--task support` for a fair same-judge comparison.*")
     lines.append("")
     lines.append("Arena Loop's reported score is measured against an expanded test suite")
     lines.append(f"({arena_suite_size} questions), not the original 10. Direct comparison")

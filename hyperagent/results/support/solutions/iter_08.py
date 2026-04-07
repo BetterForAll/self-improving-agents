@@ -1,5 +1,14 @@
+import string
+import re
+
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
+
+    This improved version extracts keywords from the question, searches the
+    knowledge base for sentences containing these keywords, and constructs
+    an answer from the most relevant snippets found.
+    It now preserves the original casing of the knowledge base sentences
+    for better readability in the final answer.
 
     Args:
         question: str, the customer's question
@@ -7,61 +16,92 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
-    import re
-
-    # Define common English stop words. This list can be expanded for better filtering.
-    # Placed inside the function to ensure the output contains ONLY the function definition.
-    STOP_WORDS = {
-        'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', "don't", 'should', "should've", 'now', 'd', 'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't", 'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"
-    }
-
+    # 1. Pre-process question to extract relevant keywords
     question_lower = question.lower()
-    # Extract keywords from the question: alphanumeric words, longer than 2 characters,
-    # and not present in the stop words list. This helps focus on meaningful terms.
-    keywords = set(word for word in re.findall(r'\b\w+\b', question_lower)
-                   if len(word) > 2 and word not in STOP_WORDS)
+    # Remove punctuation from the question
+    question_cleaned = question_lower.translate(str.maketrans('', '', string.punctuation))
+    question_words = set(question_cleaned.split())
 
-    if not keywords:
-        # If no meaningful keywords are extracted, return a fallback response.
-        return "Thank you for contacting us. Please rephrase your question with more specific details so we can assist you better."
+    # A basic list of common stop words to filter out noise from keywords
+    stop_words = {"a", "an", "the", "is", "are", "was", "were", "and", "or", "for", "on", "in", "with", 
+                  "how", "what", "where", "when", "why", "can", "could", "may", "might", "do", "does", 
+                  "did", "of", "to", "from", "at", "about", "this", "that", "these", "those", "it", 
+                  "its", "you", "your", "we", "our", "us", "i", "my", "me", "he", "him", "his", "she", 
+                  "her", "hers", "they", "them", "their", "which", "who", "whom", "whose", "if", "then", 
+                  "but", "not", "no", "yes", "please", "thank", "would", "will", "shall", "should", 
+                  "get", "got", "go", "goes", "going", "have", "has", "had", "been", "be", "being", "am"}
+    
+    # Filter out stop words and keep content words (words longer than or equal to 2 characters)
+    # This change includes short but often important keywords like "PC", "TV", "OS".
+    relevant_question_words = {word for word in question_words if word not in stop_words and len(word) >= 2}
 
-    # Split the knowledge base into potential answer chunks (sentences).
-    # This regex splits after a period, question mark, or exclamation mark followed by whitespace.
-    # It also filters out empty strings from the split result.
-    knowledge_chunks = [chunk.strip() for chunk in re.split(r'(?<=[.!?])\s+', knowledge_base) if chunk.strip()]
+    # If no relevant keywords are found after filtering, return a generic but slightly more helpful response
+    if not relevant_question_words:
+        return "Thank you for your question. While I couldn't identify specific keywords, please visit our comprehensive FAQ page or contact customer support for more information."
 
-    best_match = ""
-    max_score = 0
+    # 2. Pre-process knowledge base: Split into sentences and score them
+    # Split the original knowledge base into sentences to preserve original casing.
+    # The regex splits on '.', '!', '?' followed by a space, keeping the punctuation within the sentence string.
+    original_sentences = re.split(r'(?<=[.!?])\s+', knowledge_base)
+    # Filter out any empty strings that might result from splitting, especially if KB ends with punctuation.
+    original_sentences = [s.strip() for s in original_sentences if s.strip()]
 
-    # Iterate through each chunk in the knowledge base to find the best matching sentence.
-    for chunk in knowledge_chunks:
-        chunk_lower = chunk.lower()
-        current_chunk_score = 0
+    scored_sentences = []
+
+    for original_sentence in original_sentences:
+        # Create a lowercase version of the sentence for keyword comparison
+        sentence_lower = original_sentence.lower() 
+        # Clean the lowercase sentence for word comparison (remove punctuation)
+        sentence_cleaned_for_comparison = sentence_lower.translate(str.maketrans('', '', string.punctuation))
+        # Split the cleaned sentence into a list of words to allow for counting multiple occurrences
+        sentence_word_list = sentence_cleaned_for_comparison.split()
         
-        # Calculate score for the current chunk:
-        # Count all whole word occurrences of each keyword from the question.
-        # This approach (Term Frequency like) gives more weight to chunks where keywords appear more often,
-        # and using word boundaries (`\b`) ensures precise whole-word matching.
-        for keyword in keywords:
-            # Use regex to find all whole word occurrences of the keyword in the chunk.
-            # re.escape is crucial to treat the keyword string literally,
-            # in case it contains special regex characters.
-            matches = re.findall(r'\b' + re.escape(keyword) + r'\b', chunk_lower)
-            current_chunk_score += len(matches) # Add the count of occurrences to the score
+        score = 0
+        # Calculate a score based on how many relevant question keywords are in the sentence
+        # The score now increases for each occurrence of a relevant keyword,
+        # giving more weight to sentences that mention keywords multiple times.
+        for q_word in relevant_question_words:
+            score += sentence_word_list.count(q_word)
         
-        # Determine if the current chunk is a better match:
-        # 1. A higher score (more frequent and precise keyword matches) is always preferred.
-        # 2. If scores are equal, prefer a shorter answer (more concise) if it has a positive score
-        #    and it's not the initial empty string (implicitly handled by current_chunk_score > 0).
-        if current_chunk_score > max_score:
-            max_score = current_chunk_score
-            best_match = chunk
-        elif current_chunk_score == max_score and current_chunk_score > 0 and len(chunk) < len(best_match):
-            best_match = chunk
+        if score > 0:  # Only consider sentences that contain at least one matching keyword
+            # Store the score along with the original-cased sentence
+            scored_sentences.append((score, original_sentence))
 
-    if max_score > 0:
-        # If a relevant chunk was found, return it as the answer.
-        return best_match.strip()
+    # 3. Construct Answer from relevant snippets
+    if not scored_sentences:
+        # If no sentences in the knowledge base contained any relevant keywords
+        return "I apologize, but I couldn't find information directly matching your question in the knowledge base. Please try rephrasing your question or consult our detailed product documentation."
+
+    # Sort sentences by their score in descending order
+    scored_sentences.sort(key=lambda x: x[0], reverse=True)
+
+    relevant_snippets = []
+    # Take the top N (e.g., 3) most relevant sentences
+    for score, original_sentence_text in scored_sentences:
+        # Ensure the sentence is not empty after stripping whitespace
+        processed_sentence = original_sentence_text.strip()
+        if not processed_sentence:
+            continue
+        
+        # Capitalize the first letter of the sentence for better readability,
+        # ensuring consistency even if the original sentence started lowercase.
+        if processed_sentence: 
+            processed_sentence = processed_sentence[0].upper() + processed_sentence[1:]
+
+        # Ensure the sentence ends with proper punctuation
+        if not processed_sentence.endswith(('.', '!', '?')):
+            processed_sentence += '.'
+        
+        relevant_snippets.append(processed_sentence)
+        
+        # Limit the number of snippets to avoid overly long answers
+        if len(relevant_snippets) >= 3:
+            break
+
+    if relevant_snippets:
+        # Join the selected snippets to form the final answer
+        # A prefix indicates that the answer is derived from the knowledge base
+        return "Based on our knowledge base: " + " ".join(relevant_snippets)
     else:
-        # If no keywords matched any chunks, or knowledge_base was empty, return a fallback.
-        return "Thank you for contacting us. We couldn't find a direct answer to your question in our knowledge base. Please try rephrasing or check our website."
+        # Fallback if, after all processing and filtering, no snippets are left
+        return "I couldn't find a direct answer to your question in the provided knowledge base. Please check our website or contact support."

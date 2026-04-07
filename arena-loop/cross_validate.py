@@ -143,67 +143,183 @@ def cross_validate_email():
     return True
 
 
+def _load_support_llm():
+    """Load the LLM module and support config for judging."""
+    sys.path.insert(0, os.path.join(ROOT, "autoresearch"))
+    import llm
+    llm.reset_token_usage()
+
+    sys.path.insert(0, os.path.join(ROOT, "tasks", "support"))
+    import config as support_config
+    return llm, support_config
+
+
+def _run_support_judge_once(answers, test_cases, llm_module, judge_prompt_template):
+    """Score answers with a single LLM judge call. Returns score or None."""
+    import re
+    qa_pairs = ""
+    for i, (tc, ans) in enumerate(zip(test_cases, answers)):
+        qa_pairs += (
+            f"\nQuestion {i+1}: {tc['question']}\n"
+            f"Expected: {tc['expected']}\n"
+            f"Actual: {ans['answer']}\n"
+        )
+    judge_prompt = judge_prompt_template.format(qa_pairs=qa_pairs)
+    judge_response = llm_module.ask(judge_prompt)
+
+    text = judge_response.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        text = "\n".join(lines[1:-1])
+    try:
+        data = json.loads(text)
+        return float(data.get("average", 0))
+    except (json.JSONDecodeError, ValueError):
+        numbers = re.findall(r'\d+\.?\d*', text)
+        return float(numbers[-1]) if numbers else None
+
+
+def _run_support_judge(solution_path, test_cases, knowledge_base, llm_module,
+                       judge_prompt_template, judge_runs=3):
+    """Run a support solution against test cases and score with LLM judge.
+    Averages judge_runs calls to reduce noise.
+    Returns (score, answers_list) or (None, error_string)."""
+    ns = {}
+    try:
+        with open(solution_path, encoding="utf-8") as f:
+            exec(compile(f.read(), solution_path, "exec"), ns)
+    except Exception as e:
+        return None, f"Failed to load: {e}"
+
+    answer_fn = ns.get("answer_question")
+    if not answer_fn:
+        return None, "No answer_question function found"
+
+    # Collect answers (only once -- answers are deterministic)
+    answers = []
+    for tc in test_cases:
+        try:
+            answer = str(answer_fn(tc["question"], knowledge_base))
+        except Exception as e:
+            answer = f"[ERROR: {e}]"
+        answers.append({"question": tc["question"], "answer": answer})
+
+    # Score with multiple judge calls and average
+    scores = []
+    for _ in range(judge_runs):
+        s = _run_support_judge_once(answers, test_cases, llm_module, judge_prompt_template)
+        if s is not None:
+            scores.append(s)
+
+    if not scores:
+        return None, "All judge runs failed"
+
+    avg = round(sum(scores) / len(scores), 2)
+    return avg, answers
+
+
 def cross_validate_support():
-    """Support cross-validation using pre_expansion_metric from arena history."""
-    log_path = os.path.join(DIR, "results", "support", "experiment-log.json")
-    if not os.path.exists(log_path):
-        print("ERROR: No arena-loop support results found.")
-        print("Run: python experiment.py --task support")
+    """Unified support cross-validation: all solutions scored by the same LLM judge."""
+    # Check all solutions exist
+    solutions = []
+    for name, folder in LEVELS:
+        best_path = os.path.join(ROOT, folder, "results", "support", "solutions", "best.py")
+        if os.path.exists(best_path):
+            solutions.append((name, folder, best_path))
+
+    baseline_path = os.path.join(ROOT, "tasks", "support", "initial_solution.py")
+    if os.path.exists(baseline_path):
+        solutions.append(("Baseline", "baseline", baseline_path))
+
+    if len(solutions) < 2:
+        print("ERROR: Need at least 2 support solutions for cross-validation.")
+        print("Run experiments first: python run_all.py --tasks support")
         return False
 
-    with open(log_path) as f:
-        arena_log = json.load(f)
-
-    history = arena_log.get("history", [])
-    if not history:
-        print("ERROR: No round history in arena-loop support results.")
-        return False
-
-    arena_best = arena_log.get("best_metric")
-    arena_suite_size = arena_log.get("test_suite_size", "?")
-
-    # Find peak pre_expansion_metric
-    peak_pre = None
-    peak_round = None
-    for h in history:
-        pre = h.get("pre_expansion_metric")
-        if pre is not None and (peak_pre is None or pre > peak_pre):
-            peak_pre = pre
-            peak_round = h.get("step", "?")
+    # Load LLM and config
+    print("  Loading LLM judge and support config...")
+    llm_module, support_config = _load_support_llm()
+    test_cases = support_config.TEST_CASES
+    knowledge_base = support_config.KNOWLEDGE_BASE
+    judge_template = support_config.JUDGE_PROMPT
 
     print("=" * 70)
-    print("  CROSS-VALIDATION: support (fairness comparison)")
+    print("  CROSS-VALIDATION: support (unified LLM judge session)")
     print("=" * 70)
     print()
-    print(f"  Arena Loop's reported best: {arena_best} (against {arena_suite_size} questions)")
-    print(f"  Arena Loop pre-expansion peak: {peak_pre} (round {peak_round}, against original tests)")
-    print()
-    print("  The reported score of {:.2f} is NOT comparable to Levels 1-3 scores,".format(arena_best))
-    print(f"  which were measured against the original 10 questions.")
+    print(f"  Scoring all {len(solutions)} solutions against the same {len(test_cases)} questions")
+    print(f"  using the same LLM judge in a single session (eliminates inter-session noise).")
     print()
 
-    print("  " + "-" * 66)
-    print(f"  {'Level':<25} {'Best Score':>12} {'Test Suite':>15}")
-    print("  " + "-" * 66)
+    # Score each solution
+    results = {}
+    for name, folder, path in solutions:
+        print(f"  Scoring {name}...", end=" ", flush=True)
+        score, answers = _run_support_judge(
+            path, test_cases, knowledge_base, llm_module, judge_template
+        )
+        if score is not None:
+            results[folder] = {"name": name, "score": score, "answers": answers}
+            print(f"{score:.2f}")
+        else:
+            print(f"FAILED: {answers}")
+
+    # Also load original experiment scores for comparison
+    print()
+    print("  " + "-" * 70)
+    print(f"  {'Level':<25} {'Original Run':>14} {'Unified Judge':>14} {'Difference':>12}")
+    print("  " + "-" * 70)
 
     for name, folder in LEVELS:
-        if folder == "arena-loop":
+        if folder not in results:
             continue
-        level_log_path = os.path.join(ROOT, folder, "results", "support", "experiment-log.json")
-        if os.path.exists(level_log_path):
-            with open(level_log_path) as f:
-                level_log = json.load(f)
-            best = level_log.get("best_metric", "N/A")
-            print(f"  {name:<25} {best:>12} {'10 (original)':>15}")
+        unified = results[folder]["score"]
+        # Get original run score
+        log_path = os.path.join(ROOT, folder, "results", "support", "experiment-log.json")
+        orig = None
+        if os.path.exists(log_path):
+            with open(log_path) as f:
+                log = json.load(f)
+            orig = log.get("best_metric")
+        orig_str = f"{orig:.2f}" if orig is not None else "N/A"
+        diff = f"{unified - orig:+.2f}" if orig is not None else "N/A"
+        print(f"  {name:<25} {orig_str:>14} {unified:>14.2f} {diff:>12}")
 
-    print(f"  {'Arena Loop (reported)':<25} {arena_best:>12} {str(arena_suite_size) + ' (expanded)':>15}")
-    print(f"  {'Arena Loop (pre-exp peak)':<25} {peak_pre:>12} {'10 (original)':>15}")
-    print("  " + "-" * 66)
+    if "baseline" in results:
+        print(f"  {'Baseline':<25} {'N/A':>14} {results['baseline']['score']:>14.2f} {'N/A':>12}")
+
+    print("  " + "-" * 70)
     print()
-    print(f"  FAIR COMPARISON: Arena Loop peaked at {peak_pre} on the original test suite")
-    print(f"  (round {peak_round}), which is comparable to the best of Levels 1-3.")
-    print(f"  Its lower reported score of {arena_best} reflects a HARDER test suite,")
-    print(f"  not a worse solution.")
+
+    # Find winner
+    level_results = {k: v for k, v in results.items() if k != "baseline"}
+    if level_results:
+        winner = max(level_results.items(), key=lambda x: x[1]["score"])
+        print(f"  WINNER: {winner[1]['name']} with {winner[1]['score']:.2f}")
+        print(f"  (All solutions scored by the same judge on the same {len(test_cases)} questions)")
+    print()
+
+    # Save results for analyze_results.py to pick up
+    output_path = os.path.join(DIR, "results", "support", "cross_validation.json")
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    save_data = {
+        "test_suite_size": len(test_cases),
+        "judge_model": "gemini-2.5-flash",
+        "scores": {k: {"name": v["name"], "score": v["score"]} for k, v in results.items()},
+    }
+    # Add token usage
+    usage = llm_module.get_token_usage()
+    save_data["token_usage"] = usage
+    cost = (
+        usage["prompt_tokens"] * 0.30 / 1_000_000 +
+        usage["completion_tokens"] * 2.50 / 1_000_000
+    )
+    save_data["estimated_cost_usd"] = cost
+
+    with open(output_path, "w") as f:
+        json.dump(save_data, f, indent=2)
+    print(f"  Results saved to: {output_path}")
+    print(f"  Judge cost: {usage['calls']} calls, {usage['total_tokens']:,} tokens, ${cost:.4f}")
     print()
     print("=" * 70)
     return True

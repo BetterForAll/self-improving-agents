@@ -1,9 +1,9 @@
 {
-  "generation": 4,
+  "generation": 5,
   "run_id": "run_20260407_014102",
   "best_metric": 63.5,
   "baseline_metric": 63.5,
-  "last_valid_gen": 4,
+  "last_valid_gen": 5,
   "history": [
     {
       "type": "task_step",
@@ -91,6 +91,27 @@
       "proposed_metric": 63.5,
       "previous_metric": 60.3,
       "improvement_pct": 5.3
+    },
+    {
+      "type": "task_step",
+      "step": 13,
+      "action": "REJECTED",
+      "proposed_metric": 40.4,
+      "previous_metric": 63.5
+    },
+    {
+      "type": "task_step",
+      "step": 14,
+      "action": "REJECTED",
+      "proposed_metric": 40.49,
+      "previous_metric": 63.5
+    },
+    {
+      "type": "task_step",
+      "step": 15,
+      "action": "REJECTED",
+      "proposed_metric": 47.78,
+      "previous_metric": 63.5
     }
   ],
   "generation_log": [
@@ -124,6 +145,15 @@
     {
       "type": "generation",
       "gen_id": 4,
+      "valid": true,
+      "files_changed": [
+        "task_agent.py"
+      ],
+      "best_metric": 63.5
+    },
+    {
+      "type": "generation",
+      "gen_id": 5,
       "valid": true,
       "files_changed": [
         "task_agent.py"

@@ -42,10 +42,12 @@ def write_solution(code, solution_file):
         f.write(code)
 
 
-def run_solution(config, solution_file, llm_module=None):
+def run_solution(config, solution_file, llm_module=None, judge_runs=None):
     """Run benchmark.py with solution_file as argument. Parse output.
 
     For LLM-as-judge tasks (config.USES_LLM_JUDGE), requires llm_module.
+    judge_runs: number of times to call the LLM judge and average (default: 1
+    for backward compatibility, 3 recommended for stable scores).
     Returns (metric_value, error_string_or_None).
     """
     timeout = 60 if config.TASK_NAME == "snake" else 30
@@ -59,7 +61,9 @@ def run_solution(config, solution_file, llm_module=None):
         output = result.stdout
 
         if getattr(config, "USES_LLM_JUDGE", False):
-            return _run_llm_judge(config, output, llm_module)
+            if judge_runs is None:
+                judge_runs = getattr(config, "JUDGE_RUNS", 1)
+            return _run_llm_judge_averaged(config, output, llm_module, judge_runs)
         else:
             return _parse_metric(config, output)
     except subprocess.TimeoutExpired:
@@ -88,7 +92,7 @@ def _parse_metric(config, output):
 
 
 def _run_llm_judge(config, output, llm_module):
-    """Parse answers JSON, call LLM judge, return score."""
+    """Parse answers JSON, call LLM judge, return score (single run)."""
     if llm_module is None:
         return None, "LLM-as-judge task requires llm_module"
 
@@ -112,6 +116,31 @@ def _run_llm_judge(config, output, llm_module):
     judge_response = llm_module.ask(judge_prompt)
     score = _parse_judge_score(judge_response)
     return score, None
+
+
+def _run_llm_judge_averaged(config, output, llm_module, runs=1):
+    """Run LLM judge multiple times and average to reduce noise.
+
+    With runs=1, behaves identically to _run_llm_judge (backward compatible).
+    With runs=3, smooths out LLM judge variance significantly.
+    """
+    if runs <= 1:
+        return _run_llm_judge(config, output, llm_module)
+
+    scores = []
+    last_error = None
+    for _ in range(runs):
+        score, err = _run_llm_judge(config, output, llm_module)
+        if score is not None:
+            scores.append(score)
+        else:
+            last_error = err
+
+    if not scores:
+        return None, last_error or "All judge runs failed"
+
+    avg = sum(scores) / len(scores)
+    return round(avg, 2), None
 
 
 def _parse_judge_score(response):

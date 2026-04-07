@@ -8,6 +8,7 @@ METRIC_NAME = "quality_score"
 HIGHER_IS_BETTER = True
 PERFECT_SCORE = 100.0  # stop early when quality reaches 100/100
 USES_LLM_JUDGE = True
+JUDGE_RUNS = 3  # average 3 judge calls per evaluation to reduce noise
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 

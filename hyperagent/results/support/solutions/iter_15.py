@@ -10,6 +10,14 @@ def answer_question(question, knowledge_base):
     It now preserves the original casing of the knowledge base sentences
     for better readability in the final answer.
 
+    Improvements in this version:
+    1. Enhanced stop-word list to include common contractions (after punctuation removal)
+       to more robustly filter out non-essential words from the question.
+    2. Increased weight for bigram matches (from +2 to +3), making phrase matching more impactful
+       and prioritizing sentences containing exact question phrases.
+    3. Added a significant bonus score (+5) for sentences that contain *all* relevant single keywords
+       from the question, prioritizing comprehensive answers that cover all core concepts of the query.
+
     Args:
         question: str, the customer's question
         knowledge_base: str, product information text
@@ -25,15 +33,17 @@ def answer_question(question, knowledge_base):
     question_word_list_ordered = question_cleaned.split()
     question_words_set = set(question_word_list_ordered)
 
-    # A basic list of common stop words to filter out noise from keywords
+    # A basic list of common stop words to filter out noise from keywords.
+    # Includes common contractions (after punctuation removal, e.g., "don't" becomes "dont").
     stop_words = {"a", "an", "the", "is", "are", "was", "were", "and", "or", "for", "on", "in", "with", 
                   "how", "what", "where", "when", "why", "can", "could", "may", "might", "do", "does", 
                   "did", "of", "to", "from", "at", "about", "this", "that", "these", "those", "it", 
                   "its", "you", "your", "we", "our", "us", "i", "my", "me", "he", "him", "his", "she", 
                   "her", "hers", "they", "them", "their", "which", "who", "whom", "whose", "if", "then", 
                   "but", "not", "no", "yes", "please", "thank", "would", "will", "shall", "should", 
-                  "get", "got", "go", "goes", "going", "have", "has", "had", "been", "be", "being", "am"}
-    
+                  "get", "got", "go", "goes", "going", "have", "has", "had", "been", "be", "being", "am",
+                  "im", "youre", "dont", "cant", "wont", "wouldnt", "couldnt", "hasnt", "havent", "isnt", "arent", "wasnt", "werent", "didnt", "doesnt", "ive", "hes", "shes", "theyve", "weve"} 
+
     # Filter out stop words to get relevant single keywords.
     relevant_question_words = {word for word in question_words_set if word not in stop_words}
 
@@ -43,7 +53,6 @@ def answer_question(question, knowledge_base):
         word1 = question_word_list_ordered[i]
         word2 = question_word_list_ordered[i+1]
         # A bigram is considered relevant if both its constituent words are not stop words.
-        # This helps in identifying meaningful phrases like "customer support" but not "how to".
         if word1 not in stop_words and word2 not in stop_words:
             relevant_question_bigrams.add(f"{word1} {word2}")
 
@@ -70,21 +79,27 @@ def answer_question(question, knowledge_base):
         sentence_words_set = set(sentence_cleaned_for_comparison.split()) # Use set for efficient single word lookup
         
         score = 0
+        matched_keywords_count = 0 # To track how many unique relevant_question_words are found
+
         # Calculate a score based on how many relevant single keywords are in the sentence
         for q_word in relevant_question_words:
             if q_word in sentence_words_set:
                 score += 1 # Base score for single word match
+                matched_keywords_count += 1
         
         # Add score for relevant bigrams (higher weight for sequence match)
         # This gives a significant bonus for sentences containing exact phrases from the question,
         # thereby improving the precision of relevance.
         for q_bigram in relevant_question_bigrams:
             # Check if the bigram (as a phrase) exists as a substring in the cleaned sentence.
-            # This implicitly checks for word order and proximity within the sentence.
             if q_bigram in sentence_cleaned_for_comparison:
-                score += 2 # Give a higher score for a bigram match (e.g., +2 points)
-                               # This is *in addition* to scores for individual words,
-                               # effectively boosting sentences that contain matched phrases.
+                score += 3 # Increased bigram weight to prioritize phrase matches (e.g., +3 points)
+                               
+        # Add a significant bonus if all unique relevant single keywords from the question are present
+        # This prioritizes sentences that offer a comprehensive match to the question's core concepts.
+        if relevant_question_words and matched_keywords_count == len(relevant_question_words):
+            score += 5 # Substantial bonus for a complete keyword match
+
             
         if score > 0:  # Only consider sentences that contain at least one matching keyword/bigram
             # Store the score along with the original-cased sentence and its length.

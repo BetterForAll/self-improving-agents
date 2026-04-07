@@ -5,11 +5,6 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import llm
 
-# Helper function to determine if higher values are better for a given metric
-def _is_higher_better(metric_name):
-    # Common keywords indicating that LOWER values are better
-    lower_is_better_keywords = ["time", "ms", "latency", "error", "loss", "cost", "memory", "bytes", "duration"]
-    return not any(keyword in metric_name.lower() for keyword in lower_is_better_keywords)
 
 def propose(current_code, best_metric, history, metric_name="time_ms"):
     recent = history[-3:] if history else []
@@ -20,23 +15,21 @@ def propose(current_code, best_metric, history, metric_name="time_ms"):
             history_text += f" ({h.get('improvement_pct', 0):.1f}% better)"
         history_text += "\n"
 
-    higher_is_better = _is_higher_better(metric_name)
-    metric_goal_verb = "increase" if higher_is_better else "decrease"
-    comparison_symbol = ">" if higher_is_better else "<"
-    opposite_comparison_symbol = "<" if higher_is_better else ">"
-
     prompt = (
-        f"You are improving a Python function.\n"
-        f"Your primary goal is to {metric_goal_verb} the '{metric_name}'.\n\n"
+        f"You are improving a Python function to optimize for {metric_name}.\n\n"
         f"CURRENT CODE:\n{current_code}\n\n"
-        f"Current best '{metric_name}': {best_metric:.3f}\n"
-        f"You MUST propose code that aims for a '{metric_name}' {comparison_symbol} {best_metric:.3f}.\n"
-        f"DO NOT propose solutions where the '{metric_name}' is {opposite_comparison_symbol} {best_metric:.3f}.\n\n"
+        f"Current {metric_name}: {best_metric:.3f}\n\n"
     )
     if history_text:
         prompt += f"RECENT HISTORY:\n{history_text}\n\n"
     prompt += (
-        f"Write an improved version. Return ONLY the function definition."
+        f"Write an improved version.\n\n"
+        f"GUIDELINES:\n"
+        f"- Return ONLY the complete Python function definition, starting with 'def' and including its entire body.\n"
+        f"- The function name and its parameter list MUST remain unchanged. Do NOT alter the function signature.\n"
+        f"- Ensure the proposed code is robust, handles potential errors gracefully, and maintains its intended functionality.\n"
+        f"- Focus on improving the {metric_name} metric while strictly adhering to these guidelines.\n"
+        f"\n"
     )
     raw = llm.ask(prompt)
     return llm.extract_code(raw), raw

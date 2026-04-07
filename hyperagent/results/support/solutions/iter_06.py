@@ -31,8 +31,10 @@ def answer_question(question, knowledge_base):
                   "but", "not", "no", "yes", "please", "thank", "would", "will", "shall", "should", 
                   "get", "got", "go", "goes", "going", "have", "has", "had", "been", "be", "being", "am"}
     
-    # Filter out stop words and keep content words (words longer than 2 characters)
-    relevant_question_words = {word for word in question_words if word not in stop_words and len(word) > 2}
+    # Filter out stop words.
+    # Removed the 'and len(word) > 2' condition to allow short but important keywords
+    # (e.g., "AI", "5G", "USB", "FAQ") to be included in the search, improving relevance.
+    relevant_question_words = {word for word in question_words if word not in stop_words}
 
     # If no relevant keywords are found after filtering, return a generic but slightly more helpful response
     if not relevant_question_words:
@@ -41,8 +43,7 @@ def answer_question(question, knowledge_base):
     # 2. Pre-process knowledge base: Split into sentences and score them
     # Split the original knowledge base into sentences to preserve original casing.
     # The regex splits on '.', '!', '?' followed by a space, keeping the punctuation within the sentence string.
-    # Filter out empty strings that might result from the split, and strip whitespace.
-    original_sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', knowledge_base) if s.strip()]
+    original_sentences = re.split(r'(?<=[.!?])\s+', knowledge_base)
 
     scored_sentences = []
 
@@ -51,16 +52,13 @@ def answer_question(question, knowledge_base):
         sentence_lower = original_sentence.lower() 
         # Clean the lowercase sentence for word comparison (remove punctuation)
         sentence_cleaned_for_comparison = sentence_lower.translate(str.maketrans('', '', string.punctuation))
-        # Keep as a list of words to allow multiple matches for the same keyword.
-        # This is an improvement over using a set, as it allows for counting multiple occurrences
-        # of the same keyword within a single sentence, giving a more accurate relevance score.
-        sentence_words_list = sentence_cleaned_for_comparison.split()
+        sentence_words = set(sentence_cleaned_for_comparison.split())
         
         score = 0
         # Calculate a score based on how many relevant question keywords are in the sentence
         for q_word in relevant_question_words:
-            # Count occurrences of the keyword in the sentence
-            score += sentence_words_list.count(q_word) 
+            if q_word in sentence_words:
+                score += 1
         
         if score > 0:  # Only consider sentences that contain at least one matching keyword
             # Store the score along with the original-cased sentence
@@ -77,19 +75,17 @@ def answer_question(question, knowledge_base):
     relevant_snippets = []
     # Take the top N (e.g., 3) most relevant sentences
     for score, original_sentence_text in scored_sentences:
-        # The sentence should already be stripped from the original_sentences processing,
-        # but re-stripping here doesn't hurt and ensures robustness.
+        # Ensure the sentence is not empty after stripping whitespace
         processed_sentence = original_sentence_text.strip()
-        
-        # This check should ideally be redundant due to the earlier filtering of original_sentences,
-        # but again, for robustness, it's harmless.
         if not processed_sentence:
             continue
         
         # Capitalize the first letter of the sentence for better readability,
         # ensuring consistency even if the original sentence started lowercase.
-        # This also ensures 'processed_sentence' is not empty before accessing [0]
-        processed_sentence = processed_sentence[0].upper() + processed_sentence[1:]
+        # This check for `processed_sentence` before indexing is a safeguard,
+        # though `if not processed_sentence:` above already handles truly empty strings.
+        if processed_sentence: 
+            processed_sentence = processed_sentence[0].upper() + processed_sentence[1:]
 
         # Ensure the sentence ends with proper punctuation
         if not processed_sentence.endswith(('.', '!', '?')):
@@ -106,7 +102,5 @@ def answer_question(question, knowledge_base):
         # A prefix indicates that the answer is derived from the knowledge base
         return "Based on our knowledge base: " + " ".join(relevant_snippets)
     else:
-        # Fallback if, after all processing and filtering, no snippets are left.
-        # This path should technically be covered by `if not scored_sentences:`
-        # but acts as an additional safety net.
+        # Fallback if, after all processing and filtering, no snippets are left
         return "I couldn't find a direct answer to your question in the provided knowledge base. Please check our website or contact support."

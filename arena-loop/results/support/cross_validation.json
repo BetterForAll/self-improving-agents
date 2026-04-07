@@ -1,0 +1,33 @@
+{
+  "test_suite_size": 10,
+  "judge_model": "gemini-2.5-flash",
+  "scores": {
+    "autoresearch": {
+      "name": "AutoResearch",
+      "score": 38.27
+    },
+    "feedback-loop": {
+      "name": "Feedback Loop",
+      "score": 54.93
+    },
+    "hyperagent": {
+      "name": "HyperAgent",
+      "score": 46.08
+    },
+    "arena-loop": {
+      "name": "Arena Loop",
+      "score": 43.33
+    },
+    "baseline": {
+      "name": "Baseline",
+      "score": 3.0
+    }
+  },
+  "token_usage": {
+    "prompt_tokens": 22605,
+    "completion_tokens": 3739,
+    "total_tokens": 107833,
+    "calls": 15
+  },
+  "estimated_cost_usd": 0.016129
+}

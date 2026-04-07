@@ -4,11 +4,12 @@ import re
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
 
-    This improved version extracts keywords from the question, searches the
-    knowledge base for sentences containing these keywords, and constructs
-    an answer from the most relevant snippets found.
+    This improved version extracts keywords and N-grams (bigrams, trigrams) from the question,
+    searches the knowledge base for sentences containing these, and constructs an
+    answer from the most relevant snippets found.
     It now preserves the original casing of the knowledge base sentences
-    for better readability in the final answer.
+    for better readability in the final answer and gives higher weight
+    to longer, more specific matching phrases.
 
     Args:
         question: str, the customer's question
@@ -16,39 +17,53 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
-    # 1. Pre-process question to extract relevant keywords and bigrams
+    # 1. Pre-process question to extract relevant keywords and N-grams (bigrams, trigrams)
     question_lower = question.lower()
     # Remove punctuation from the question
     question_cleaned = question_lower.translate(str.maketrans('', '', string.punctuation))
     
-    # Split cleaned question into words for both single word set and an ordered list for bigrams
+    # Split cleaned question into words for both single word set and an ordered list for N-grams
     question_word_list_ordered = question_cleaned.split()
     question_words_set = set(question_word_list_ordered)
 
-    # A basic list of common stop words to filter out noise from keywords
+    # A basic list of common stop words to filter out noise from keywords and N-grams.
+    # Expanded to include common contractions and auxiliary verbs for more robust filtering.
     stop_words = {"a", "an", "the", "is", "are", "was", "were", "and", "or", "for", "on", "in", "with", 
                   "how", "what", "where", "when", "why", "can", "could", "may", "might", "do", "does", 
                   "did", "of", "to", "from", "at", "about", "this", "that", "these", "those", "it", 
                   "its", "you", "your", "we", "our", "us", "i", "my", "me", "he", "him", "his", "she", 
                   "her", "hers", "they", "them", "their", "which", "who", "whom", "whose", "if", "then", 
                   "but", "not", "no", "yes", "please", "thank", "would", "will", "shall", "should", 
-                  "get", "got", "go", "goes", "going", "have", "has", "had", "been", "be", "being", "am"}
+                  "get", "got", "go", "goes", "going", "have", "has", "had", "been", "be", "being", "am",
+                  "i'm", "you're", "it's", "we're", "they're", "i've", "you've", "we've", "they've", "i'll", 
+                  "you'll", "we'll", "he's", "she's", "that's", "there's", "here's", "where's", "what's",
+                  "wouldn't", "don't", "doesn't", "didn't", "can't", "couldn't", "won't", "shouldn't", "mustn't"}
     
     # Filter out stop words to get relevant single keywords.
-    relevant_question_words = {word for word in question_words_set if word not in stop_words}
+    # Ensure words are not empty strings that might result from splitting multiple spaces.
+    relevant_question_words = {word for word in question_words_set if word and word not in stop_words}
 
     # Generate relevant bigrams from the question
     relevant_question_bigrams = set()
     for i in range(len(question_word_list_ordered) - 1):
         word1 = question_word_list_ordered[i]
         word2 = question_word_list_ordered[i+1]
-        # A bigram is considered relevant if both its constituent words are not stop words.
-        # This helps in identifying meaningful phrases like "customer support" but not "how to".
-        if word1 not in stop_words and word2 not in stop_words:
+        # A bigram is considered relevant if both its constituent words are not stop words and not empty.
+        if word1 and word2 and word1 not in stop_words and word2 not in stop_words:
             relevant_question_bigrams.add(f"{word1} {word2}")
 
-    # If no relevant keywords or bigrams are found after filtering, return a generic response
-    if not relevant_question_words and not relevant_question_bigrams:
+    # Generate relevant trigrams from the question
+    relevant_question_trigrams = set()
+    for i in range(len(question_word_list_ordered) - 2):
+        word1 = question_word_list_ordered[i]
+        word2 = question_word_list_ordered[i+1]
+        word3 = question_word_list_ordered[i+2]
+        # A trigram is relevant if all its constituent words are not stop words and not empty.
+        if word1 and word2 and word3 and word1 not in stop_words and word2 not in stop_words and word3 not in stop_words:
+            relevant_question_trigrams.add(f"{word1} {word2} {word3}")
+
+    # If no relevant keywords or N-grams are found after filtering, return a generic response
+    if not relevant_question_words and not relevant_question_bigrams and not relevant_question_trigrams:
         return "Thank you for your question. While I couldn't identify specific keywords, please visit our comprehensive FAQ page or contact customer support for more information."
 
     # 2. Pre-process knowledge base: Split into sentences and score them
@@ -59,7 +74,7 @@ def answer_question(question, knowledge_base):
     scored_sentences = []
 
     for original_sentence in original_sentences:
-        # Skip empty strings that might result from re.split on malformed KB text
+        # Skip empty strings or sentences that are just whitespace
         if not original_sentence.strip():
             continue
 
@@ -80,20 +95,25 @@ def answer_question(question, knowledge_base):
         # thereby improving the precision of relevance.
         for q_bigram in relevant_question_bigrams:
             # Check if the bigram (as a phrase) exists as a substring in the cleaned sentence.
-            # This implicitly checks for word order and proximity within the sentence.
             if q_bigram in sentence_cleaned_for_comparison:
-                score += 2 # Give a higher score for a bigram match (e.g., +2 points)
-                               # This is *in addition* to scores for individual words,
-                               # effectively boosting sentences that contain matched phrases.
+                score += 3 # Give a higher score for a bigram match (e.g., +3 points)
+                               # This is *in addition* to scores for individual words.
             
-        if score > 0:  # Only consider sentences that contain at least one matching keyword/bigram
+        # Add score for relevant trigrams (even higher weight for longer phrase match)
+        for q_trigram in relevant_question_trigrams:
+            # Check if the trigram (as a phrase) exists as a substring in the cleaned sentence.
+            if q_trigram in sentence_cleaned_for_comparison:
+                score += 5 # Give an even higher score for a trigram match (e.g., +5 points)
+                                # This further boosts sentences containing very specific phrases.
+            
+        if score > 0:  # Only consider sentences that contain at least one matching keyword/N-gram
             # Store the score along with the original-cased sentence and its length.
             # Sentence length is added for tie-breaking in sorting (preferring more concise).
             scored_sentences.append((score, original_sentence, len(original_sentence)))
 
     # 3. Construct Answer from relevant snippets
     if not scored_sentences:
-        # If no sentences in the knowledge base contained any relevant keywords or bigrams
+        # If no sentences in the knowledge base contained any relevant keywords or N-grams
         return "I apologize, but I couldn't find information directly matching your question in the knowledge base. Please try rephrasing your question or consult our detailed product documentation."
 
     # Sort sentences by their score in descending order.
@@ -110,10 +130,10 @@ def answer_question(question, knowledge_base):
         
         # Capitalize the first letter of the sentence for better readability,
         # ensuring consistency even if the original sentence started lowercase.
-        if len(processed_sentence) > 0: # Guard against potential empty strings from stripping
+        if processed_sentence: # Guard against potential empty strings from stripping
             processed_sentence = processed_sentence[0].upper() + processed_sentence[1:]
 
-        # Ensure the sentence ends with proper punctuation
+        # Ensure the sentence ends with proper punctuation, adding a period if missing.
         if not processed_sentence.endswith(('.', '!', '?')):
             processed_sentence += '.'
         
@@ -128,5 +148,7 @@ def answer_question(question, knowledge_base):
         # A prefix indicates that the answer is derived from the knowledge base
         return "Based on our knowledge base: " + " ".join(relevant_snippets)
     else:
-        # Fallback if, after all processing and filtering, no snippets are left
+        # Fallback if, after all processing and filtering, no snippets are left.
+        # This case is highly unlikely given the check for `not scored_sentences` earlier,
+        # but provides an extra layer of robustness.
         return "I couldn't find a direct answer to your question in the provided knowledge base. Please check our website or contact support."
