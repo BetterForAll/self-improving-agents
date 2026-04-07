@@ -76,9 +76,6 @@ python autoresearch/run.py --task snake            # Snake game AI
 python autoresearch/run.py --task support           # Customer support (LLM-as-judge)
 python arena-loop/run.py --task email_validation    # Adversarial email validation
 
-# Watch the Snake AI play (after running an experiment)
-python tasks/snake/play.py autoresearch/results/snake/solutions/best.py
-
 # Run experiments with logging and analysis
 python autoresearch/experiment.py --task snake --iters 6
 
@@ -316,7 +313,7 @@ analyze_results.py          Cross-level comparison of experiment results
 
 ## Checkpoint & Resume
 
-All four levels use a shared checkpoint module (`tasks/checkpoint.py`) for
+All levels use a shared checkpoint module (`tasks/checkpoint.py`) for
 atomic, resumable checkpointing. If an experiment is interrupted (crash, API
 timeout, Ctrl+C), re-run the same command and it resumes from the last
 checkpoint. Checkpoints are sequence-numbered JSON files with atomic writes
