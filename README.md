@@ -287,8 +287,9 @@ python run_all.py --tasks your_task
 ```
 
 For LLM-as-judge tasks (subjective quality), set `USES_LLM_JUDGE = True` in config.py
-and have benchmark.py print `answers:` JSON instead of a metric. See `tasks/support/`
-for an example.
+and have benchmark.py print `answers:` JSON instead of a metric. For more stable scoring,
+add `USES_RUBRIC = True` and a `rubric.py` with boolean fact checks (keyword match +
+LLM YES/NO fallback). See `tasks/support/` for an example of both approaches.
 
 ---
 

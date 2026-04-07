@@ -150,17 +150,17 @@ TASK_EXPLANATIONS = {
             "questions about a product, and a separate LLM call scores each answer's quality "
             "(0-100). Baselines vary across levels (5.0-15.0) because the LLM judge is "
             "non-deterministic -- the same initial code gets different scores each run. "
-            "The \"Unified Judge\" column shows all solutions re-scored by the same judge "
-            "in a single session for a fair comparison."
+            "The \"Unified Judge\" column shows all solutions re-scored using rubric-based "
+            "boolean checks (keyword + LLM YES/NO) for a fair, stable comparison."
         ),
         "why_scores_differ": (
-            "The unified judge (3x averaged) gives the fairest ranking. All levels' solutions "
-            "are keyword-matching heuristics of varying quality -- none use the LLM for answering, "
-            "so scores reflect how well each level's improvement loop refined the matching logic.\n\n"
-            "**Why LLM-as-judge scores vary so much:** A single judge call can swing by 30+ points "
-            "for the same solution. The original run scored HyperAgent at 66.3 and Arena Loop at "
-            "22.39, but both were noisy. With 3x averaged judging, scores stabilize and the true "
-            "ranking emerges. This is why the JUDGE_RUNS=3 fix was added to tasks/support/config.py."
+            "The Unified Judge column uses **rubric-based boolean scoring**: each answer is checked "
+            "against specific facts from the knowledge base (keyword match first, LLM YES/NO fallback "
+            "for paraphrasing), plus quality checks for relevance, tone, and contradictions. "
+            "This reduces scoring noise from 30+ points (old LLM 0-100 judge) to under 7 points.\n\n"
+            "The original Best scores varied wildly due to LLM judge noise -- Arena Loop's 22.39 was "
+            "against 28 expanded questions, and HyperAgent's original 66.3 was a lucky single judge call "
+            "that trapped it at a noisy ceiling."
         ),
         "arena_note": (
             "**Arena Loop's reported Best of 22.39 is misleading.** It was scored against an "
@@ -270,9 +270,9 @@ def build_per_task_section(all_results, task):
         lines.append("")
         if unified_scores:
             lines.append(
-                f"*\"Unified Judge\" = all solutions scored by the same LLM judge in a "
-                f"single session against the original {unified_data.get('test_suite_size', 10)} "
-                f"questions. This eliminates inter-session judge variance. "
+                f"*\"Unified Judge\" = all solutions scored using rubric-based boolean checks "
+                f"(keyword + LLM YES/NO) against the original {unified_data.get('test_suite_size', 10)} "
+                f"questions. Noise reduced from 30+ points to under 7 points. "
                 f"Arena Loop's Best ({format_metric(arena_log.get('best_metric'))}) was scored "
                 f"against the expanded suite ({arena_log.get('test_suite_size', '?')} cases).*"
             )
@@ -468,11 +468,11 @@ def _build_support_unified_section(all_results, unified):
     suite_size = unified.get("test_suite_size", 10)
 
     lines = []
-    lines.append("### support (unified LLM judge -- same judge, same session)")
+    lines.append("### support (rubric-based boolean scoring)")
     lines.append("")
-    lines.append(f"All solutions scored against the same {suite_size} questions by the same ")
-    lines.append("LLM judge in a single session. This eliminates inter-session variance ")
-    lines.append("and gives a true apples-to-apples comparison.")
+    lines.append(f"All solutions scored against the same {suite_size} questions using boolean ")
+    lines.append("fact checks (keyword match + LLM YES/NO fallback) and quality checks. ")
+    lines.append("Noise reduced from 30+ points (old 0-100 judge) to under 7 points.")
     lines.append("")
     lines.append("| Level | Original Run | Unified Judge | Difference |")
     lines.append("|-------|-------------|--------------|------------|")
@@ -517,7 +517,7 @@ def _build_support_unified_section(all_results, unified):
     # Re-build with bold on winner (simpler: just note it)
     if best_name:
         lines.append(f"**Winner: {best_name}** with {format_metric(best_unified)} -- ")
-        lines.append("scored by the same judge on the same questions as all other levels.")
+        lines.append("scored using rubric-based boolean checks on the same questions as all other levels.")
         lines.append("")
 
     # Note about original run variance

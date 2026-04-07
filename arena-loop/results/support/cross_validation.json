@@ -1,33 +1,34 @@
 {
   "test_suite_size": 10,
+  "scoring_method": "rubric",
   "judge_model": "gemini-2.5-flash",
   "scores": {
     "autoresearch": {
       "name": "AutoResearch",
-      "score": 38.27
+      "score": 52.06
     },
     "feedback-loop": {
       "name": "Feedback Loop",
-      "score": 54.93
+      "score": 71.32
     },
     "hyperagent": {
       "name": "HyperAgent",
-      "score": 46.08
+      "score": 72.86
     },
     "arena-loop": {
       "name": "Arena Loop",
-      "score": 43.33
+      "score": 72.86
     },
     "baseline": {
       "name": "Baseline",
-      "score": 3.0
+      "score": 22.55
     }
   },
   "token_usage": {
-    "prompt_tokens": 22605,
-    "completion_tokens": 3739,
-    "total_tokens": 107833,
-    "calls": 15
+    "prompt_tokens": 49821,
+    "completion_tokens": 250,
+    "total_tokens": 134315,
+    "calls": 250
   },
-  "estimated_cost_usd": 0.016129
+  "estimated_cost_usd": 0.0155713
 }

@@ -1,4 +1,4 @@
-"""Configuration for the customer support optimization task (LLM-as-judge)."""
+"""Configuration for the customer support optimization task (rubric-based scoring)."""
 
 import json
 import os
@@ -8,7 +8,8 @@ METRIC_NAME = "quality_score"
 HIGHER_IS_BETTER = True
 PERFECT_SCORE = 100.0  # stop early when quality reaches 100/100
 USES_LLM_JUDGE = True
-JUDGE_RUNS = 3  # average 3 judge calls per evaluation to reduce noise
+USES_RUBRIC = True  # use boolean rubric (keyword + LLM YES/NO) instead of open-ended 0-100
+JUDGE_RUNS = 3  # only used when USES_RUBRIC is False
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 

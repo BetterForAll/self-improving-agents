@@ -219,7 +219,7 @@ def _run_support_judge(solution_path, test_cases, knowledge_base, llm_module,
 
 
 def cross_validate_support():
-    """Unified support cross-validation: all solutions scored by the same LLM judge."""
+    """Unified support cross-validation using rubric-based boolean scoring."""
     # Check all solutions exist
     solutions = []
     for name, folder in LEVELS:
@@ -236,33 +236,55 @@ def cross_validate_support():
         print("Run experiments first: python run_all.py --tasks support")
         return False
 
-    # Load LLM and config
-    print("  Loading LLM judge and support config...")
+    # Load LLM and rubric
+    print("  Loading LLM and rubric scorer...")
     llm_module, support_config = _load_support_llm()
     test_cases = support_config.TEST_CASES
     knowledge_base = support_config.KNOWLEDGE_BASE
-    judge_template = support_config.JUDGE_PROMPT
+
+    import importlib.util
+    rubric_path = os.path.join(ROOT, "tasks", "support", "rubric.py")
+    spec = importlib.util.spec_from_file_location("rubric", rubric_path)
+    rubric_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rubric_mod)
 
     print("=" * 70)
-    print("  CROSS-VALIDATION: support (unified LLM judge session)")
+    print("  CROSS-VALIDATION: support (rubric-based boolean scoring)")
     print("=" * 70)
     print()
-    print(f"  Scoring all {len(solutions)} solutions against the same {len(test_cases)} questions")
-    print(f"  using the same LLM judge in a single session (eliminates inter-session noise).")
+    print(f"  Scoring all {len(solutions)} solutions against {len(test_cases)} questions")
+    print(f"  using boolean fact checks (keyword + LLM YES/NO fallback).")
     print()
 
     # Score each solution
     results = {}
     for name, folder, path in solutions:
         print(f"  Scoring {name}...", end=" ", flush=True)
-        score, answers = _run_support_judge(
-            path, test_cases, knowledge_base, llm_module, judge_template
-        )
-        if score is not None:
-            results[folder] = {"name": name, "score": score, "answers": answers}
-            print(f"{score:.2f}")
-        else:
-            print(f"FAILED: {answers}")
+        # Load solution and collect answers
+        ns = {}
+        try:
+            with open(path, encoding="utf-8") as f:
+                exec(compile(f.read(), path, "exec"), ns)
+        except Exception as e:
+            print(f"FAILED to load: {e}")
+            continue
+        answer_fn = ns.get("answer_question")
+        if not answer_fn:
+            print("FAILED: no answer_question function")
+            continue
+
+        answers = []
+        for tc in test_cases:
+            try:
+                ans = str(answer_fn(tc["question"], knowledge_base))
+            except Exception as e:
+                ans = f"[ERROR: {e}]"
+            answers.append({"question": tc["question"], "answer": ans})
+
+        result = rubric_mod.score_all(answers, llm_module)
+        score = result["average_score"]
+        results[folder] = {"name": name, "score": score, "answers": answers}
+        print(f"{score:.2f}")
 
     # Also load original experiment scores for comparison
     print()
@@ -296,7 +318,7 @@ def cross_validate_support():
     if level_results:
         winner = max(level_results.items(), key=lambda x: x[1]["score"])
         print(f"  WINNER: {winner[1]['name']} with {winner[1]['score']:.2f}")
-        print(f"  (All solutions scored by the same judge on the same {len(test_cases)} questions)")
+        print(f"  (Rubric: boolean fact checks + LLM YES/NO, {len(test_cases)} questions)")
     print()
 
     # Save results for analyze_results.py to pick up
@@ -304,6 +326,7 @@ def cross_validate_support():
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     save_data = {
         "test_suite_size": len(test_cases),
+        "scoring_method": "rubric",
         "judge_model": "gemini-2.5-flash",
         "scores": {k: {"name": v["name"], "score": v["score"]} for k, v in results.items()},
     }

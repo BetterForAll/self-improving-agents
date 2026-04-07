@@ -60,7 +60,9 @@ def run_solution(config, solution_file, llm_module=None, judge_runs=None):
             return None, result.stderr[:500]
         output = result.stdout
 
-        if getattr(config, "USES_LLM_JUDGE", False):
+        if getattr(config, "USES_RUBRIC", False):
+            return _run_rubric_judge(config, output, llm_module)
+        elif getattr(config, "USES_LLM_JUDGE", False):
             if judge_runs is None:
                 judge_runs = getattr(config, "JUDGE_RUNS", 1)
             return _run_llm_judge_averaged(config, output, llm_module, judge_runs)
@@ -141,6 +143,32 @@ def _run_llm_judge_averaged(config, output, llm_module, runs=1):
 
     avg = sum(scores) / len(scores)
     return round(avg, 2), None
+
+
+def _run_rubric_judge(config, output, llm_module):
+    """Score answers using boolean rubric checks (keyword + LLM YES/NO fallback)."""
+    if llm_module is None:
+        return None, "Rubric scoring requires llm_module"
+
+    answers_line = None
+    for line in output.strip().splitlines():
+        if line.startswith("answers:"):
+            answers_line = line.split(":", 1)[1]
+            break
+    if not answers_line:
+        return None, "No answers output found"
+
+    answers = json.loads(answers_line)
+
+    # Import rubric scorer from the task's own directory
+    import importlib.util
+    rubric_path = os.path.join(os.path.dirname(config.BENCHMARK_PATH), "rubric.py")
+    spec = importlib.util.spec_from_file_location("rubric", rubric_path)
+    rubric_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rubric_mod)
+
+    result = rubric_mod.score_all(answers, llm_module)
+    return result["average_score"], None
 
 
 def _parse_judge_score(response):

@@ -1,0 +1,227 @@
+[
+  {
+    "question": "How much does it cost?",
+    "expected": "Personal is $9/month or $89/year, Pro is $29/month or $290/year, Enterprise is $79/month per seat with annual billing only.",
+    "fact_checks": [
+      {
+        "description": "States the Personal plan price ($9/month or $89/year)",
+        "keywords": ["$9"],
+        "weight": 2
+      },
+      {
+        "description": "States the Pro plan price ($29/month or $290/year)",
+        "keywords": ["$29"],
+        "weight": 2
+      },
+      {
+        "description": "States the Enterprise plan price ($79/month per seat)",
+        "keywords": ["$79"],
+        "weight": 2
+      },
+      {
+        "description": "Mentions Enterprise is per seat or annual billing only",
+        "keywords": ["per seat", "annual billing"],
+        "weight": 1
+      },
+      {
+        "description": "Covers all three plan tiers (Personal, Pro, Enterprise)",
+        "keywords": [],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "Can I try it for free?",
+    "expected": "Yes, there is a 14-day free trial on any plan, no credit card required.",
+    "fact_checks": [
+      {
+        "description": "Confirms a free trial is available",
+        "keywords": ["free trial", "try for free", "try it free"],
+        "weight": 3
+      },
+      {
+        "description": "Specifies the trial duration is 14 days",
+        "keywords": ["14-day", "14 days", "14 day"],
+        "weight": 2
+      },
+      {
+        "description": "States the trial is available on any plan",
+        "keywords": ["any plan", "all plans"],
+        "weight": 1
+      },
+      {
+        "description": "States no credit card is required",
+        "keywords": ["no credit card", "credit card not required", "without a credit card"],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "Does it work on my iPhone?",
+    "expected": "Yes, CloudSync Pro supports iOS along with Windows, Mac, Linux, Android, and web browsers.",
+    "fact_checks": [
+      {
+        "description": "Gives a clear yes -- it works on iPhone/iOS",
+        "keywords": ["iOS", "iPhone"],
+        "weight": 3
+      },
+      {
+        "description": "Mentions at least 3 other supported platforms (Windows, Mac, Linux, Android, web)",
+        "keywords": [],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "I want to cancel, can I get a refund?",
+    "expected": "You can cancel anytime. Within the first 30 days you get a prorated refund. After 30 days there is no refund but you keep access until the end of your billing period.",
+    "fact_checks": [
+      {
+        "description": "States that cancellation is possible at any time",
+        "keywords": ["cancel anytime", "cancel at any time", "anytime"],
+        "weight": 3
+      },
+      {
+        "description": "Mentions prorated refund within the first 30 days",
+        "keywords": ["prorat"],
+        "weight": 2
+      },
+      {
+        "description": "States the 30-day refund window",
+        "keywords": ["30 day", "30-day"],
+        "weight": 2
+      },
+      {
+        "description": "States no refund after 30 days",
+        "keywords": [],
+        "weight": 2
+      },
+      {
+        "description": "Mentions access continues until end of billing period",
+        "keywords": ["billing period", "end of"],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "How much storage do I get on the Pro plan?",
+    "expected": "The Pro plan includes 500GB of storage.",
+    "fact_checks": [
+      {
+        "description": "States 500GB for the Pro plan",
+        "keywords": ["500GB", "500 GB"],
+        "weight": 3
+      },
+      {
+        "description": "Specifically addresses the Pro plan (not a generic data dump)",
+        "keywords": ["Pro"],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "What happens if two people edit the same file?",
+    "expected": "The newest edit wins and the older version is automatically saved to version history so nothing is lost.",
+    "fact_checks": [
+      {
+        "description": "States the newest/latest edit wins",
+        "keywords": ["newest edit wins", "latest edit wins", "newest version"],
+        "weight": 3
+      },
+      {
+        "description": "States the older version is saved to version history",
+        "keywords": ["version history"],
+        "weight": 2
+      },
+      {
+        "description": "Reassures that nothing is lost",
+        "keywords": ["nothing is lost", "no data loss", "not lost"],
+        "weight": 1
+      }
+    ]
+  },
+  {
+    "question": "Can I access my files without internet?",
+    "expected": "Yes, files marked as available offline can be accessed without an internet connection.",
+    "fact_checks": [
+      {
+        "description": "Confirms files can be accessed without internet",
+        "keywords": ["offline", "without internet", "without an internet", "no internet"],
+        "weight": 3
+      },
+      {
+        "description": "Mentions files must be marked as available offline (conditional access)",
+        "keywords": ["available offline", "marked as"],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "Is my data encrypted?",
+    "expected": "Yes, CloudSync Pro uses end-to-end encryption with AES-256.",
+    "fact_checks": [
+      {
+        "description": "Confirms data is encrypted",
+        "keywords": ["encrypt"],
+        "weight": 3
+      },
+      {
+        "description": "Mentions end-to-end encryption",
+        "keywords": ["end-to-end"],
+        "weight": 2
+      },
+      {
+        "description": "Specifies AES-256",
+        "keywords": ["AES-256", "AES256"],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "How fast is your support response?",
+    "expected": "It depends on your plan: Personal gets email within 24 hours, Pro gets email and chat within 4 hours, Enterprise gets email, chat, phone, and a dedicated account manager.",
+    "fact_checks": [
+      {
+        "description": "States that response time depends on the plan",
+        "keywords": [],
+        "weight": 2
+      },
+      {
+        "description": "Mentions Personal plan: email support, 24-hour response",
+        "keywords": ["24 hour", "24-hour"],
+        "weight": 2
+      },
+      {
+        "description": "Mentions Pro plan: email + chat, 4-hour response",
+        "keywords": ["4 hour", "4-hour"],
+        "weight": 2
+      },
+      {
+        "description": "Mentions Enterprise plan: phone support and/or dedicated account manager",
+        "keywords": ["account manager", "phone"],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "Can I upload a 15GB video file?",
+    "expected": "Large files over 10GB are supported on Pro and Enterprise plans only. If you are on Personal, you would need to upgrade.",
+    "fact_checks": [
+      {
+        "description": "States that files over 10GB are supported (so yes, 15GB is possible)",
+        "keywords": ["10GB", "10 GB"],
+        "weight": 3
+      },
+      {
+        "description": "States this is only available on Pro and/or Enterprise plans",
+        "keywords": ["Pro", "Enterprise"],
+        "weight": 2
+      },
+      {
+        "description": "Mentions that Personal plan users need to upgrade",
+        "keywords": ["upgrade", "Personal"],
+        "weight": 1
+      }
+    ]
+  }
+]
