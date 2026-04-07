@@ -1,24 +1,26 @@
 # Self-Improving Agents -- A Progression
 
-Four levels of self-improving code agents, from the simplest loop to a full
+Five levels of self-improving code agents, from the simplest loop to a full
 adversarial arena with self-modifying agents. Each level adds one key idea.
 
 Independent research comparing existing approaches to self-improving code agents
 and proposing new ones.
 
-- **Level 1:** LLM improves code against a benchmark (a la Karpathy's AutoResearch).
+- **Level 1 -- AutoResearch Loop:** LLM improves code against a benchmark (a la Karpathy's [AutoResearch](https://github.com/karpathy/autoresearch)).
 
 ![Level 1: AutoResearch Loop](assets/level1.png)
 
-- **Level 2:** A reviewer explains WHY it failed and suggests specific fixes (my contribution, built independently in Feb 2026 -- before AutoResearch and HyperAgents were published).
+- **Level 2 -- Feedback Loop:** A reviewer explains WHY it failed and suggests specific fixes (my contribution, built independently in Feb 2026 -- before AutoResearch and HyperAgents were published).
 
 ![Level 2: Feedback Loop](assets/level2.png)
 
-- **Level 3:** The agent rewrites its own source code (inspired by Meta's HyperAgents).
+- **Level 3 -- HyperAgent Loop:** The agent rewrites its own source code (inspired by Meta's [HyperAgents](https://arxiv.org/abs/2603.19461)).
 
 ![Level 3: HyperAgent Loop](assets/level3.png)
 
-- **Level 4:** The agent rewrites its own code AND the benchmark itself evolves (my proposed next step).
+- **Level 4a -- Arena Single:** Pure adversarial co-evolution -- 1 code agent vs 1 test agent, no tournament (isolates the adversarial signal).
+
+- **Level 4b -- Arena Loop:** Full arena with tournament selection -- 4 agents compete, worst replaced by mutated winners (adds population dynamics).
 
 ![Level 4: Arena Loop](assets/level4.png)
 
@@ -103,7 +105,8 @@ a full adversarial arena, with each level adding one concept:
 1. The loop itself (verifiable rewards at the agent level)
 2. Asymmetric structured review (reviewer sees full history, returns categorized feedback)
 3. True code-rewriting (meta-agent rewrites its own source code with crash recovery)
-4. Adversarial co-evolution with self-modifying agents and population-based tournament
+4a. Adversarial co-evolution (1v1 arms race isolates the adversarial signal)
+4b. Population-based tournament selection (adds competition and strategy evolution)
 
 Prior work on adversarial code/test co-evolution (Code-A1, CURE, UTRL, ATGen) operates
 through RL weight training -- fine-tuning model parameters. This project takes a
@@ -220,11 +223,10 @@ containers, folder-based versioning instead.
 
 ---
 
-## Level 4 -- `arena-loop/` -- Arena Loop
+## Level 4a -- `arena-loop/` -- Arena Single (1v1 adversarial)
 
-Adds **adversarial co-evolution** with **self-modifying agents**. The benchmark
-itself evolves, and code agents are mini-HyperAgents that can mutate their own
-`propose()` method.
+Isolates the **adversarial co-evolution** mechanism: 1 code agent vs 1 test agent.
+No tournament, no population dynamics -- just the arms race.
 
 ```
 Round 1: Code agent reaches 100% accuracy.
@@ -240,10 +242,18 @@ Round 3: Code agent handles those too. 94%.
 The arms race IS the training signal. Like GANs (Generative Adversarial
 Networks) for code -- two agents push each other to improve.
 
-Tournament selection runs every K rounds: best agents survive, worst are
-replaced by mutated winners. Strategies evolve through competition.
-Code agents can also mutate their own `propose()` function -- the code that
-generates code improvements is itself subject to evolution.
+Run with: `python arena-loop/experiment.py --code 1 --test 1 --label single`
+
+---
+
+## Level 4b -- `arena-loop/` -- Arena Loop (4-agent tournament)
+
+Adds **tournament selection** on top of the adversarial mechanism. Multiple
+code agents and test agents compete; worst are replaced by mutated winners
+every K rounds. Strategies evolve through competition.
+
+Code agents are mini-HyperAgents that can mutate their own `propose()` function
+-- the code that generates code improvements is itself subject to evolution.
 
 Resume is fully supported via serialize/deserialize on all agent objects.
 
