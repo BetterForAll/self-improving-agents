@@ -288,8 +288,16 @@ python run_all.py --tasks your_task
 
 For LLM-as-judge tasks (subjective quality), set `USES_LLM_JUDGE = True` in config.py
 and have benchmark.py print `answers:` JSON instead of a metric. For more stable scoring,
-add `USES_RUBRIC = True` and a `rubric.py` with boolean fact checks (keyword match +
-LLM YES/NO fallback). See `tasks/support/` for an example of both approaches.
+generate a boolean rubric:
+
+```bash
+python tasks/generate_rubric.py --task your_task
+```
+
+This analyzes your test cases and knowledge base, then generates `rubric_checks.json`
+(per-question boolean fact checks with weights) and `rubric.py` (scoring engine).
+Review the generated checks, add `USES_RUBRIC = True` to config.py, and run your
+experiment. See `tasks/support/` for an example.
 
 ---
 
