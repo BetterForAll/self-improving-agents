@@ -573,6 +573,13 @@ def _build_support_unified_section(all_results, unified):
         lines.append(
             f"HyperAgent drops on the expanded suite, showing less robust solutions."
         )
+        lines.append("")
+        lines.append(
+            f"*Note: The expanded questions are adversarial against the Arena's own solutions, "
+            f"not universally harder. Other levels may score higher on them if their approach "
+            f"happens to cover those topics well. The original questions are the fair comparison; "
+            f"the expanded column shows topic coverage, not difficulty.*"
+        )
     else:
         if best_orig_name:
             lines.append(f"**Winner: {best_orig_name}** with {format_metric(best_orig)} -- ")

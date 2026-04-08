@@ -399,6 +399,12 @@ def cross_validate_support():
                       f"{runner_exp[1]['name']} ({runner_exp[1]['expanded_score']:.2f}) are within measurement noise (~{noise_threshold:.0f} points)")
             else:
                 print(f"  WINNER (expanded {len(expanded_tests)} questions): {top_exp[1]['name']} with {top_exp[1]['expanded_score']:.2f}")
+    if expanded_tests:
+        print()
+        print("  Note: Expanded questions are adversarial against the Arena's own solutions,")
+        print("  not universally harder. Other levels may score higher on them if their")
+        print("  approach covers those topics well. The original questions are the fair")
+        print("  comparison; the expanded column shows topic coverage, not difficulty.")
     print()
 
     # Save results
