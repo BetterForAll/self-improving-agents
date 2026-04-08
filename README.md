@@ -1,6 +1,6 @@
 # Self-Improving Agents -- A Progression
 
-Five levels of self-improving code agents, from the simplest loop to a full
+Four levels of self-improving code agents, from the simplest loop to a full
 adversarial arena with self-modifying agents. Each level adds one key idea.
 
 Independent research comparing existing approaches to self-improving code agents
@@ -30,9 +30,9 @@ and proposing new ones.
 
 ![Level 3: HyperAgent Loop](assets/level3.png)
 
-- **Level 4a -- Arena Single:** Pure adversarial co-evolution -- 1 code agent vs 1 test agent, no tournament (isolates the adversarial signal).
-
-- **Level 4b -- Arena Loop:** Full arena with tournament selection -- 4 agents compete, worst replaced by mutated winners (adds population dynamics).
+- **Level 4 -- Arena Loop:** Adversarial co-evolution -- code agents and test agents push each other to improve. The benchmark itself evolves (my proposed next step).
+  - *4a -- Arena Single:* 1 code agent vs 1 test agent (isolates the adversarial signal)
+  - *4b -- Arena Loop:* 4 agents compete, worst replaced by mutated winners (adds population dynamics)
 
 ![Level 4: Arena Loop](assets/level4.png)
 
@@ -314,8 +314,10 @@ hyperagent/                 Level 3: HyperAgent Loop
   agent_code/                 Live working copies (rewritten each generation)
   generations/                Versioned snapshots (gen_000/, gen_001/, ...)
 
-arena-loop/                 Level 4: Arena Loop
+arena-loop/                 Level 4: Arena (both 4a single and 4b tournament)
   run.py, code_agent.py, test_agent.py, arena.py, llm.py, experiment.py, CONCEPT.md
+  results/                  4b tournament results
+  results-single/           4a single (1v1) results
 
 run_all.py                  Run all experiments + generate analysis (single command)
 analyze_results.py          Cross-level comparison of experiment results
