@@ -1,15 +1,12 @@
 import re
-from collections import defaultdict
+from collections import Counter
 
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
 
-    This improved version processes the knowledge base and the question to find
-    the most relevant sentences. It utilizes hash maps (Python dictionaries)
-    to build an inverted index, replacing naive linear search with efficient
-    lookups for "support" calculation (i.e., identifying relevant text).
-    This drastically reduces execution time for larger knowledge bases and
-    improves the quality_score by providing an actual answer based on the KB.
+    This improved version leverages collections.Counter for efficient word frequency
+    analysis to identify relevant parts of the knowledge base, enhancing both
+    answer quality and computation speed for large text bodies.
 
     Args:
         question: str, the customer's question
@@ -18,71 +15,85 @@ def answer_question(question, knowledge_base):
     Returns: str, the answer
     """
 
-    # 1. Preprocessing and Indexing the Knowledge Base
-    # Split the knowledge base into sentences.
-    # The regex attempts to split sentences correctly while ignoring common abbreviations.
-    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', knowledge_base)
-    sentences = [s.strip() for s in sentences if s.strip()]
+    # --- Helper Functions for Text Processing ---
+    def _clean_text(text):
+        """Lowercase and remove punctuation from text, then split into words."""
+        text = text.lower()
+        # Remove anything that's not a letter, number, or space
+        text = re.sub(r'[^a-z0-9\s]', '', text)
+        return text.split()
 
-    # If the knowledge base is empty or could not be processed into sentences,
-    # return a specific message.
-    if not sentences:
-        return "The knowledge base is empty or could not be processed to find answers."
+    def _split_into_sentences(text):
+        """
+        Split text into sentences using basic punctuation rules.
+        Handles common abbreviations like "Mr.", "U.S." to avoid incorrect splits.
+        """
+        # Regex to split sentences at periods, question marks, or exclamation points,
+        # but not after abbreviations (like "Dr.") or decimals.
+        sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text)
+        return [s.strip() for s in sentences if s.strip()]
 
-    # Build an inverted index: word -> set of sentence indices where the word appears.
-    # This uses hash maps (Python dict and set) for efficient O(1) average-case lookups.
-    inverted_index = defaultdict(set)
-    processed_sentences_words = [] # Stores tokenized words for each sentence
+    # --- 1. Preprocess Question ---
+    # Extract unique words from the question for keyword matching
+    question_keywords = set(_clean_text(question))
+    
+    if not question_keywords:
+        return "Thank you for contacting us. Please visit our website for more information."
 
-    for i, sentence in enumerate(sentences):
-        # Normalize sentence: convert to lowercase and extract alphanumeric words.
-        normalized_words = re.findall(r'\b\w+\b', sentence.lower())
-        processed_sentences_words.append(normalized_words)
+    # --- 2. Preprocess Knowledge Base ---
+    kb_sentences = _split_into_sentences(knowledge_base)
+    
+    # Store original sentences along with their word frequency counters
+    # This pre-computation uses collections.Counter once per sentence
+    processed_kb_data = []
+    for original_sentence in kb_sentences:
+        cleaned_words = _clean_text(original_sentence)
+        if cleaned_words: # Ensure the sentence is not empty after cleaning
+            processed_kb_data.append({
+                "original": original_sentence,
+                "word_counter": Counter(cleaned_words)
+            })
 
-        for word in normalized_words:
-            inverted_index[word].add(i)
+    # --- 3. Score Sentences using collections.Counter ---
+    # Calculate a relevance score for each sentence in the knowledge base
+    # by summing the frequencies of question keywords found within it.
+    scored_sentences = []
+    for item in processed_kb_data:
+        score = 0
+        sentence_word_counter = item["word_counter"]
+        
+        # Efficiently sum up the counts of question keywords using Counter's fast lookup.
+        # If a keyword is not in the sentence, Counter[keyword] returns 0.
+        for q_word in question_keywords:
+            score += sentence_word_counter[q_word]
 
-    # 2. Process the Question
-    # Normalize the question and extract keywords.
-    question_words = set(re.findall(r'\b\w+\b', question.lower()))
+        if score > 0: # Only keep sentences that contain at least one question keyword
+            scored_sentences.append((score, item["original"]))
 
-    # 3. Find Candidate Sentences (Support Calculation)
-    # Identify sentences that contain any of the question keywords using the inverted index.
-    # This avoids iterating through every word of every sentence.
-    candidate_sentence_indices = set()
-    for q_word in question_words:
-        if q_word in inverted_index:
-            candidate_sentence_indices.update(inverted_index[q_word])
+    # --- 4. Select Best Sentences ---
+    # Sort sentences by their relevance score in descending order
+    scored_sentences.sort(key=lambda x: x[0], reverse=True)
 
-    # 4. Score Candidate Sentences
-    # Rank sentences based on how many question keywords they contain.
-    # This is a simple measure of "support" from the knowledge base.
-    sentence_scores = defaultdict(int)
-    for idx in candidate_sentence_indices:
-        current_sentence_words = set(processed_sentences_words[idx])
-        # Count the number of common words between the question and the current sentence.
-        common_words_count = len(question_words.intersection(current_sentence_words))
-        sentence_scores[idx] = common_words_count
+    if not scored_sentences:
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."
 
-    # 5. Retrieve the Best Answer
-    if not sentence_scores or max(sentence_scores.values()) == 0:
-        return "I could not find relevant information in the knowledge base for your question."
-
-    # Find the maximum score achieved by any sentence.
-    max_score = max(sentence_scores.values())
-
-    # Collect all sentences that achieved the maximum score.
-    best_sentence_indices = [idx for idx, score in sentence_scores.items() if score == max_score]
-
-    # Sort indices to maintain the original order of sentences for coherence.
-    best_sentence_indices.sort()
-    answer_parts = [sentences[idx] for idx in best_sentence_indices]
-
-    # Combine the best matching sentences to form the final answer.
-    answer = " ".join(answer_parts).strip()
-
-    # Fallback in case the combined answer is somehow empty (shouldn't happen with previous checks)
-    if not answer:
-        return "I could not find relevant information in the knowledge base for your question."
-
-    return answer
+    # Collect all sentences that share the highest relevance score
+    max_score = scored_sentences[0][0]
+    relevant_sentences = []
+    for score, sentence in scored_sentences:
+        if score == max_score:
+            relevant_sentences.append(sentence)
+        else:
+            # Optionally, one could include a few more top-scoring sentences
+            # even if their score is slightly lower than max_score, up to a limit.
+            # For simplicity, we stick to only sentences with the absolute max score here.
+            break 
+            
+    # --- 5. Formulate Answer ---
+    if relevant_sentences:
+        # Join the selected relevant sentences to form the answer
+        answer = " ".join(relevant_sentences)
+        return f"Regarding your question: {answer}"
+    else:
+        # Fallback if no relevant sentences were found (should be caught earlier, but good for robustness)
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."

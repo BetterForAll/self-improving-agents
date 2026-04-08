@@ -395,9 +395,14 @@ def _build_email_cross_validation(all_results):
     lines.append("| Level | vs Original | vs Expanded | Combined* |")
     lines.append("|-------|-------------|-------------|-----------|")
 
+    # Collect scores for narrative
+    level_exp_scores = []  # (name, key, score_exp) for levels 1-3
+    arena_combined = None
+
     for level_info in LEVELS:
         name = level_info["name"]
         folder = level_info["folder"]
+        key = level_info["key"]
         subfolder = level_info.get("results_subfolder", "results")
         best_path = os.path.join(ROOT, folder, subfolder, "email_validation",
                                   "solutions", "best.py")
@@ -418,6 +423,11 @@ def _build_email_cross_validation(all_results):
             note = ""
         lines.append(f"| {name} | {score_orig:.0%} | {score_exp:.0%} | {score_all:.0%}{note} |")
 
+        if key in ("autoresearch", "feedback-loop", "hyperagent"):
+            level_exp_scores.append(score_exp)
+        if key == "arena-loop":
+            arena_combined = score_all
+
     baseline_path = os.path.join(ROOT, "tasks", "email_validation", "initial_solution.py")
     if os.path.exists(baseline_path):
         with open(baseline_path) as f:
@@ -431,10 +441,15 @@ def _build_email_cross_validation(all_results):
     lines.append("")
     lines.append("*Combined = all unique tests from both suites.")
     lines.append("")
-    lines.append("Levels 1-3 optimized for the original 20 tests and scored 90-100% on them -- ")
-    lines.append("but those solutions are **brittle**: they drop to 58-62% on the expanded tests ")
-    lines.append("(adversarial edge cases they never trained against). Arena Loop scored 84% on ")
-    lines.append("the combined suite because it trained against adversarial pressure throughout.")
+    # Build narrative from computed scores
+    if level_exp_scores and arena_combined is not None:
+        low = min(level_exp_scores)
+        high = max(level_exp_scores)
+        drop_range = f"{low:.0%}-{high:.0%}" if low != high else f"{low:.0%}"
+        lines.append("Levels 1-3 optimized for the original 20 tests and scored 90-100% on them -- ")
+        lines.append(f"but those solutions are **brittle**: they drop to {drop_range} on the expanded tests ")
+        lines.append(f"(adversarial edge cases they never trained against). Arena Loop scored {arena_combined:.0%} on ")
+        lines.append("the combined suite because it trained against adversarial pressure throughout.")
     lines.append("")
     return "\n".join(lines)
 
@@ -701,12 +716,13 @@ def build_llm_prompt(all_results, summary_table, per_task_sections):
     )
 
     prompt = f"""You are analyzing experiment results from a self-improving code agent project.
-There are 4 levels of increasing sophistication:
+There are 5 levels of increasing sophistication:
 
 Level 1 - AutoResearch: Basic loop. LLM proposes code, benchmark evaluates, keep if better.
 Level 2 - Feedback Loop: Adds structured reviewer with issue taxonomy, severity, fix suggestions.
 Level 3 - HyperAgent: Meta-agent rewrites its own source code (true code-rewriting self-improvement).
-Level 4 - Arena Loop: Adversarial test agents + tournament selection. Code agents are mini-HyperAgents.
+Level 4a - Arena Single: Adversarial co-evolution (1 code agent vs 1 test agent, no tournament).
+Level 4b - Arena Loop: Adversarial test agents + tournament selection (4 agents). Code agents are mini-HyperAgents.
 
 Tasks tested:
 {task_lines}

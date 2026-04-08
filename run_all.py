@@ -42,6 +42,11 @@ LEVELS = {
         "script": os.path.join(DIR, "hyperagent", "experiment.py"),
         "default_args": ["--gens", "4"],
     },
+    "arena-single": {
+        "name": "Arena Single",
+        "script": os.path.join(DIR, "arena-loop", "experiment.py"),
+        "default_args": ["--rounds", "6", "--code", "1", "--test", "1", "--label", "single"],
+    },
     "arena-loop": {
         "name": "Arena Loop",
         "script": os.path.join(DIR, "arena-loop", "experiment.py"),
@@ -269,6 +274,19 @@ def main():
         registry.append(run_record)
         save_registry(registry)
         print(f"\n  Registry updated: {REGISTRY_FILE}")
+
+        # Run cross-validation (scores all levels with same judge for fair comparison)
+        if not args.skip_analysis:
+            print(f"\n{'=' * 70}")
+            print(f"  Running cross-validation...")
+            print(f"{'=' * 70}\n")
+            cross_val_script = os.path.join(DIR, "arena-loop", "cross_validate.py")
+            result = subprocess.run(
+                [sys.executable, cross_val_script, "--task", "all"],
+                cwd=os.path.join(DIR, "arena-loop"),
+            )
+            if result.returncode != 0:
+                print(f"\n  Cross-validation failed (exit code {result.returncode})")
 
         # Run analysis
         if not args.skip_analysis:

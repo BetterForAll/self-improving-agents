@@ -44,14 +44,14 @@ def get_results_dir(task_name):
 
 
 def save_solution(task_name, filename, code):
-    sol_dir = os.path.join(RESULTS_DIR, task_name, "solutions")
+    sol_dir = os.path.join(get_results_dir(task_name), "solutions")
     os.makedirs(sol_dir, exist_ok=True)
     with open(os.path.join(sol_dir, filename), "w", encoding="utf-8") as f:
         f.write(code)
 
 
 def save_tests(task_name, filename, test_suite):
-    test_dir = os.path.join(RESULTS_DIR, task_name, "tests")
+    test_dir = os.path.join(get_results_dir(task_name), "tests")
     os.makedirs(test_dir, exist_ok=True)
     with open(os.path.join(test_dir, filename), "w") as f:
         json.dump(test_suite, f, indent=2)
@@ -60,7 +60,7 @@ def save_tests(task_name, filename, test_suite):
 def save_agent_code(task_name, agent_id, propose_source):
     if not propose_source:
         return
-    agent_dir = os.path.join(RESULTS_DIR, task_name, "agent_code")
+    agent_dir = os.path.join(get_results_dir(task_name), "agent_code")
     os.makedirs(agent_dir, exist_ok=True)
     with open(os.path.join(agent_dir, f"{agent_id}_propose.py"), "w", encoding="utf-8") as f:
         f.write(propose_source)

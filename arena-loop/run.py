@@ -178,7 +178,7 @@ def run_arena(n_code=4, n_test=4, n_rounds=6, tournament_every=2,
             global_best_metric = new_best
 
         # -- Tournament --
-        if round_num % tournament_every == 0:
+        if round_num % tournament_every == 0 and len(code_agents) > 1:
             print(f"\n  [TOURNAMENT -- round {round_num}]")
             scores = {a.agent_id: ev.benchmark(
                 code_map.get(a.agent_id, initial_code), test_suite

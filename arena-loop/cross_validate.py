@@ -33,10 +33,11 @@ ORIGINAL_TESTS_PATH = os.path.join(TASK_DIR, "initial_tests.json")
 EXPANDED_TESTS_PATH = os.path.join(RESULTS_DIR, "tests", "final_tests.json")
 
 LEVELS = [
-    ("AutoResearch", "autoresearch"),
-    ("Feedback Loop", "feedback-loop"),
-    ("HyperAgent", "hyperagent"),
-    ("Arena Loop", "arena-loop"),
+    ("AutoResearch", "autoresearch", "results", "autoresearch"),
+    ("Feedback Loop", "feedback-loop", "results", "feedback-loop"),
+    ("HyperAgent", "hyperagent", "results", "hyperagent"),
+    ("Arena Single", "arena-loop", "results-single", "arena-single"),
+    ("Arena Loop", "arena-loop", "results", "arena-loop"),
 ]
 
 
@@ -116,8 +117,8 @@ def cross_validate_email():
     print("  " + "-" * 66)
 
     # Test each level's best solution
-    for name, folder in LEVELS:
-        best_path = os.path.join(ROOT, folder, "results", "email_validation",
+    for name, folder, subfolder, level_key in LEVELS:
+        best_path = os.path.join(ROOT, folder, subfolder, "email_validation",
                                   "solutions", "best.py")
         if not os.path.exists(best_path):
             print(f"  {name:<20} (no solution found)")
@@ -248,10 +249,10 @@ def cross_validate_support():
     """Unified support cross-validation using rubric-based boolean scoring."""
     # Check all solutions exist
     solutions = []
-    for name, folder in LEVELS:
-        best_path = os.path.join(ROOT, folder, "results", "support", "solutions", "best.py")
+    for name, folder, subfolder, level_key in LEVELS:
+        best_path = os.path.join(ROOT, folder, subfolder, "support", "solutions", "best.py")
         if os.path.exists(best_path):
-            solutions.append((name, folder, best_path))
+            solutions.append((name, level_key, best_path))
 
     baseline_path = os.path.join(ROOT, "tasks", "support", "initial_solution.py")
     if os.path.exists(baseline_path):
@@ -344,11 +345,11 @@ def cross_validate_support():
         print(f"  {'Level':<25} {'Original Run':>14} {'Unified Judge':>14} {'Difference':>12}")
         print("  " + "-" * 70)
 
-    for name, folder in LEVELS:
-        if folder not in results:
+    for name, folder, subfolder, level_key in LEVELS:
+        if level_key not in results:
             continue
-        r = results[folder]
-        log_path = os.path.join(ROOT, folder, "results", "support", "experiment-log.json")
+        r = results[level_key]
+        log_path = os.path.join(ROOT, folder, subfolder, "support", "experiment-log.json")
         orig_run = None
         if os.path.exists(log_path):
             with open(log_path) as f:
@@ -457,8 +458,8 @@ def cross_validate_snake():
     print(f"  {'Level':<25} {'Best Score':>12}")
     print("  " + "-" * 50)
 
-    for name, folder in LEVELS:
-        level_log_path = os.path.join(ROOT, folder, "results", "snake", "experiment-log.json")
+    for name, folder, subfolder, level_key in LEVELS:
+        level_log_path = os.path.join(ROOT, folder, subfolder, "snake", "experiment-log.json")
         if os.path.exists(level_log_path):
             with open(level_log_path) as f:
                 level_log = json.load(f)

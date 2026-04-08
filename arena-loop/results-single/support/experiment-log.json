@@ -1,0 +1,202 @@
+{
+  "status": "completed",
+  "run_id": "run_20260407_193209",
+  "started_at": "2026-04-07",
+  "completed_at": "2026-04-07",
+  "elapsed_seconds": 0,
+  "task": "support",
+  "metric_name": "quality_score",
+  "higher_is_better": true,
+  "baseline_metric": 20.880000000000003,
+  "best_metric": 72.4168,
+  "iterations": 3,
+  "accepted": 2,
+  "rejected": 1,
+  "errors": 0,
+  "config": {
+    "code_agents": 1,
+    "test_agents": 1,
+    "rounds": 6
+  },
+  "test_suite_size": 19,
+  "final_code_agents": [
+    {
+      "id": "CA0",
+      "wins": 1,
+      "gen": 0,
+      "strategy": "Improve computation speed for support by using `collections.Counter` or leveraging vectorized operations from libraries like NumPy and Pandas, rather than traditional loop-based counting. This approach significantly reduces execution time for large transaction sets."
+    }
+  ],
+  "final_test_agents": [
+    {
+      "id": "TA0",
+      "wins": 1,
+      "gen": 0,
+      "strategy": "Test the function with empty input data structures (e.g., empty lists, arrays, or dataframes) or inputs where all data points are identical or represent a single trivial case. This checks for robust handling of zero-data scenarios and minimum viable data requirements."
+    }
+  ],
+  "history": [
+    {
+      "step": 1,
+      "action": "ROUND_COMPLETE",
+      "proposed_metric": 68.6185,
+      "previous_metric": 20.88,
+      "pre_expansion_metric": 66.225,
+      "test_suite_size": 13,
+      "tournament": false,
+      "code_agents": [
+        {
+          "id": "CA0",
+          "wins": 0,
+          "gen": 0
+        }
+      ],
+      "test_agents": [
+        {
+          "id": "TA0",
+          "wins": 0,
+          "gen": 0
+        }
+      ],
+      "code_agents_full": [
+        {
+          "agent_id": "CA0",
+          "strategy": "Improve computation speed for support by using `collections.Counter` or leveraging vectorized operations from libraries like NumPy and Pandas, rather than traditional loop-based counting. This approach significantly reduces execution time for large transaction sets.",
+          "generation": 0,
+          "wins": 0,
+          "current_code": "import re\nfrom collections import Counter\n\ndef answer_question(question, knowledge_base):\n    \"\"\"Answer a customer question using the knowledge base.\n\n    This improved version leverages collections.Counter for efficient word frequency\n    analysis to identify relevant parts of the knowledge base, enhancing both\n    answer quality and computation speed for large text bodies.\n\n    Args:\n        question: str, the customer's question\n        knowledge_base: str, product information text\n\n    Returns: str, the answer\n    \"\"\"\n\n    # --- Helper Functions for Text Processing ---\n    def _clean_text(text):\n        \"\"\"Lowercase and remove punctuation from text, then split into words.\"\"\"\n        text = text.lower()\n        # Remove anything that's not a letter, number, or space\n        text = re.sub(r'[^a-z0-9\\s]', '', text)\n        return text.split()\n\n    def _split_into_sentences(text):\n        \"\"\"\n        Split text into sentences using basic punctuation rules.\n        Handles common abbreviations like \"Mr.\", \"U.S.\" to avoid incorrect splits.\n        \"\"\"\n        # Regex to split sentences at periods, question marks, or exclamation points,\n        # but not after abbreviations (like \"Dr.\") or decimals.\n        sentences = re.split(r'(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?|\\!)\\s', text)\n        return [s.strip() for s in sentences if s.strip()]\n\n    # --- 1. Preprocess Question ---\n    # Extract unique words from the question for keyword matching\n    question_keywords = set(_clean_text(question))\n    \n    if not question_keywords:\n        return \"Thank you for contacting us. Please visit our website for more information.\"\n\n    # --- 2. Preprocess Knowledge Base ---\n    kb_sentences = _split_into_sentences(knowledge_base)\n    \n    # Store original sentences along with their word frequency counters\n    # This pre-computation uses collections.Counter once per sentence\n    processed_kb_data = []\n    for original_sentence in kb_sentences:\n        cleaned_words = _clean_text(original_sentence)\n        if cleaned_words: # Ensure the sentence is not empty after cleaning\n            processed_kb_data.append({\n                \"original\": original_sentence,\n                \"word_counter\": Counter(cleaned_words)\n            })\n\n    # --- 3. Score Sentences using collections.Counter ---\n    # Calculate a relevance score for each sentence in the knowledge base\n    # by summing the frequencies of question keywords found within it.\n    scored_sentences = []\n    for item in processed_kb_data:\n        score = 0\n        sentence_word_counter = item[\"word_counter\"]\n        \n        # Efficiently sum up the counts of question keywords using Counter's fast lookup.\n        # If a keyword is not in the sentence, Counter[keyword] returns 0.\n        for q_word in question_keywords:\n            score += sentence_word_counter[q_word]\n\n        if score > 0: # Only keep sentences that contain at least one question keyword\n            scored_sentences.append((score, item[\"original\"]))\n\n    # --- 4. Select Best Sentences ---\n    # Sort sentences by their relevance score in descending order\n    scored_sentences.sort(key=lambda x: x[0], reverse=True)\n\n    if not scored_sentences:\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\"\n\n    # Collect all sentences that share the highest relevance score\n    max_score = scored_sentences[0][0]\n    relevant_sentences = []\n    for score, sentence in scored_sentences:\n        if score == max_score:\n            relevant_sentences.append(sentence)\n        else:\n            # Optionally, one could include a few more top-scoring sentences\n            # even if their score is slightly lower than max_score, up to a limit.\n            # For simplicity, we stick to only sentences with the absolute max score here.\n            break \n            \n    # --- 5. Formulate Answer ---\n    if relevant_sentences:\n        # Join the selected relevant sentences to form the answer\n        answer = \" \".join(relevant_sentences)\n        return f\"Regarding your question: {answer}\"\n    else:\n        # Fallback if no relevant sentences were found (should be caught earlier, but good for robustness)\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\"",
+          "fitness_history": [
+            69.861
+          ],
+          "propose_source": ""
+        }
+      ],
+      "test_agents_full": [
+        {
+          "agent_id": "TA0",
+          "strategy": "Test the function with empty input data structures (e.g., empty lists, arrays, or dataframes) or inputs where all data points are identical or represent a single trivial case. This checks for robust handling of zero-data scenarios and minimum viable data requirements.",
+          "generation": 0,
+          "wins": 0,
+          "hardness_scores": []
+        }
+      ],
+      "code_map": {
+        "CA0": "import re\nfrom collections import Counter\n\ndef answer_question(question, knowledge_base):\n    \"\"\"Answer a customer question using the knowledge base.\n\n    This improved version leverages collections.Counter for efficient word frequency\n    analysis to identify relevant parts of the knowledge base, enhancing both\n    answer quality and computation speed for large text bodies.\n\n    Args:\n        question: str, the customer's question\n        knowledge_base: str, product information text\n\n    Returns: str, the answer\n    \"\"\"\n\n    # --- Helper Functions for Text Processing ---\n    def _clean_text(text):\n        \"\"\"Lowercase and remove punctuation from text, then split into words.\"\"\"\n        text = text.lower()\n        # Remove anything that's not a letter, number, or space\n        text = re.sub(r'[^a-z0-9\\s]', '', text)\n        return text.split()\n\n    def _split_into_sentences(text):\n        \"\"\"\n        Split text into sentences using basic punctuation rules.\n        Handles common abbreviations like \"Mr.\", \"U.S.\" to avoid incorrect splits.\n        \"\"\"\n        # Regex to split sentences at periods, question marks, or exclamation points,\n        # but not after abbreviations (like \"Dr.\") or decimals.\n        sentences = re.split(r'(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?|\\!)\\s', text)\n        return [s.strip() for s in sentences if s.strip()]\n\n    # --- 1. Preprocess Question ---\n    # Extract unique words from the question for keyword matching\n    question_keywords = set(_clean_text(question))\n    \n    if not question_keywords:\n        return \"Thank you for contacting us. Please visit our website for more information.\"\n\n    # --- 2. Preprocess Knowledge Base ---\n    kb_sentences = _split_into_sentences(knowledge_base)\n    \n    # Store original sentences along with their word frequency counters\n    # This pre-computation uses collections.Counter once per sentence\n    processed_kb_data = []\n    for original_sentence in kb_sentences:\n        cleaned_words = _clean_text(original_sentence)\n        if cleaned_words: # Ensure the sentence is not empty after cleaning\n            processed_kb_data.append({\n                \"original\": original_sentence,\n                \"word_counter\": Counter(cleaned_words)\n            })\n\n    # --- 3. Score Sentences using collections.Counter ---\n    # Calculate a relevance score for each sentence in the knowledge base\n    # by summing the frequencies of question keywords found within it.\n    scored_sentences = []\n    for item in processed_kb_data:\n        score = 0\n        sentence_word_counter = item[\"word_counter\"]\n        \n        # Efficiently sum up the counts of question keywords using Counter's fast lookup.\n        # If a keyword is not in the sentence, Counter[keyword] returns 0.\n        for q_word in question_keywords:\n            score += sentence_word_counter[q_word]\n\n        if score > 0: # Only keep sentences that contain at least one question keyword\n            scored_sentences.append((score, item[\"original\"]))\n\n    # --- 4. Select Best Sentences ---\n    # Sort sentences by their relevance score in descending order\n    scored_sentences.sort(key=lambda x: x[0], reverse=True)\n\n    if not scored_sentences:\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\"\n\n    # Collect all sentences that share the highest relevance score\n    max_score = scored_sentences[0][0]\n    relevant_sentences = []\n    for score, sentence in scored_sentences:\n        if score == max_score:\n            relevant_sentences.append(sentence)\n        else:\n            # Optionally, one could include a few more top-scoring sentences\n            # even if their score is slightly lower than max_score, up to a limit.\n            # For simplicity, we stick to only sentences with the absolute max score here.\n            break \n            \n    # --- 5. Formulate Answer ---\n    if relevant_sentences:\n        # Join the selected relevant sentences to form the answer\n        answer = \" \".join(relevant_sentences)\n        return f\"Regarding your question: {answer}\"\n    else:\n        # Fallback if no relevant sentences were found (should be caught earlier, but good for robustness)\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\""
+      },
+      "baseline_metric": 20.880000000000003
+    },
+    {
+      "step": 2,
+      "action": "ROUND_COMPLETE",
+      "proposed_metric": 66.425,
+      "previous_metric": 68.6185,
+      "pre_expansion_metric": 66.5208,
+      "test_suite_size": 16,
+      "tournament": true,
+      "code_agents": [
+        {
+          "id": "CA0",
+          "wins": 1,
+          "gen": 0
+        }
+      ],
+      "test_agents": [
+        {
+          "id": "TA0",
+          "wins": 1,
+          "gen": 0
+        }
+      ],
+      "code_agents_full": [
+        {
+          "agent_id": "CA0",
+          "strategy": "Improve computation speed for support by using `collections.Counter` or leveraging vectorized operations from libraries like NumPy and Pandas, rather than traditional loop-based counting. This approach significantly reduces execution time for large transaction sets.",
+          "generation": 0,
+          "wins": 1,
+          "current_code": "import re\nfrom collections import Counter\n\ndef answer_question(question, knowledge_base):\n    \"\"\"Answer a customer question using the knowledge base.\n\n    This improved version leverages collections.Counter for efficient word frequency\n    analysis to identify relevant parts of the knowledge base, enhancing both\n    answer quality and computation speed for large text bodies.\n\n    Args:\n        question: str, the customer's question\n        knowledge_base: str, product information text\n\n    Returns: str, the answer\n    \"\"\"\n\n    # --- Helper Functions for Text Processing ---\n    def _clean_text(text):\n        \"\"\"Lowercase and remove punctuation from text, then split into words.\"\"\"\n        text = text.lower()\n        # Remove anything that's not a letter, number, or space\n        text = re.sub(r'[^a-z0-9\\s]', '', text)\n        return text.split()\n\n    def _split_into_sentences(text):\n        \"\"\"\n        Split text into sentences using basic punctuation rules.\n        Handles common abbreviations like \"Mr.\", \"U.S.\" to avoid incorrect splits.\n        \"\"\"\n        # Regex to split sentences at periods, question marks, or exclamation points,\n        # but not after abbreviations (like \"Dr.\") or decimals.\n        sentences = re.split(r'(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?|\\!)\\s', text)\n        return [s.strip() for s in sentences if s.strip()]\n\n    # --- 1. Preprocess Question ---\n    # Extract unique words from the question for keyword matching\n    question_keywords = set(_clean_text(question))\n    \n    if not question_keywords:\n        return \"Thank you for contacting us. Please visit our website for more information.\"\n\n    # --- 2. Preprocess Knowledge Base ---\n    kb_sentences = _split_into_sentences(knowledge_base)\n    \n    # Store original sentences along with their word frequency counters\n    # This pre-computation uses collections.Counter once per sentence\n    processed_kb_data = []\n    for original_sentence in kb_sentences:\n        cleaned_words = _clean_text(original_sentence)\n        if cleaned_words: # Ensure the sentence is not empty after cleaning\n            processed_kb_data.append({\n                \"original\": original_sentence,\n                \"word_counter\": Counter(cleaned_words)\n            })\n\n    # --- 3. Score Sentences using collections.Counter ---\n    # Calculate a relevance score for each sentence in the knowledge base\n    # by summing the frequencies of question keywords found within it.\n    scored_sentences = []\n    for item in processed_kb_data:\n        score = 0\n        sentence_word_counter = item[\"word_counter\"]\n        \n        # Efficiently sum up the counts of question keywords using Counter's fast lookup.\n        # If a keyword is not in the sentence, Counter[keyword] returns 0.\n        for q_word in question_keywords:\n            score += sentence_word_counter[q_word]\n\n        if score > 0: # Only keep sentences that contain at least one question keyword\n            scored_sentences.append((score, item[\"original\"]))\n\n    # --- 4. Select Best Sentences ---\n    # Sort sentences by their relevance score in descending order\n    scored_sentences.sort(key=lambda x: x[0], reverse=True)\n\n    if not scored_sentences:\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\"\n\n    # Collect all sentences that share the highest relevance score\n    max_score = scored_sentences[0][0]\n    relevant_sentences = []\n    for score, sentence in scored_sentences:\n        if score == max_score:\n            relevant_sentences.append(sentence)\n        else:\n            # Optionally, one could include a few more top-scoring sentences\n            # even if their score is slightly lower than max_score, up to a limit.\n            # For simplicity, we stick to only sentences with the absolute max score here.\n            break \n            \n    # --- 5. Formulate Answer ---\n    if relevant_sentences:\n        # Join the selected relevant sentences to form the answer\n        answer = \" \".join(relevant_sentences)\n        return f\"Regarding your question: {answer}\"\n    else:\n        # Fallback if no relevant sentences were found (should be caught earlier, but good for robustness)\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\"",
+          "fitness_history": [
+            69.861,
+            0.0
+          ],
+          "propose_source": ""
+        }
+      ],
+      "test_agents_full": [
+        {
+          "agent_id": "TA0",
+          "strategy": "Test the function with empty input data structures (e.g., empty lists, arrays, or dataframes) or inputs where all data points are identical or represent a single trivial case. This checks for robust handling of zero-data scenarios and minimum viable data requirements.",
+          "generation": 0,
+          "wins": 1,
+          "hardness_scores": [
+            92.1
+          ]
+        }
+      ],
+      "code_map": {
+        "CA0": "import re\nfrom collections import Counter\n\ndef answer_question(question, knowledge_base):\n    \"\"\"Answer a customer question using the knowledge base.\n\n    This improved version leverages collections.Counter for efficient word frequency\n    analysis to identify relevant parts of the knowledge base, enhancing both\n    answer quality and computation speed for large text bodies.\n\n    Args:\n        question: str, the customer's question\n        knowledge_base: str, product information text\n\n    Returns: str, the answer\n    \"\"\"\n\n    # --- Helper Functions for Text Processing ---\n    def _clean_text(text):\n        \"\"\"Lowercase and remove punctuation from text, then split into words.\"\"\"\n        text = text.lower()\n        # Remove anything that's not a letter, number, or space\n        text = re.sub(r'[^a-z0-9\\s]', '', text)\n        return text.split()\n\n    def _split_into_sentences(text):\n        \"\"\"\n        Split text into sentences using basic punctuation rules.\n        Handles common abbreviations like \"Mr.\", \"U.S.\" to avoid incorrect splits.\n        \"\"\"\n        # Regex to split sentences at periods, question marks, or exclamation points,\n        # but not after abbreviations (like \"Dr.\") or decimals.\n        sentences = re.split(r'(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?|\\!)\\s', text)\n        return [s.strip() for s in sentences if s.strip()]\n\n    # --- 1. Preprocess Question ---\n    # Extract unique words from the question for keyword matching\n    question_keywords = set(_clean_text(question))\n    \n    if not question_keywords:\n        return \"Thank you for contacting us. Please visit our website for more information.\"\n\n    # --- 2. Preprocess Knowledge Base ---\n    kb_sentences = _split_into_sentences(knowledge_base)\n    \n    # Store original sentences along with their word frequency counters\n    # This pre-computation uses collections.Counter once per sentence\n    processed_kb_data = []\n    for original_sentence in kb_sentences:\n        cleaned_words = _clean_text(original_sentence)\n        if cleaned_words: # Ensure the sentence is not empty after cleaning\n            processed_kb_data.append({\n                \"original\": original_sentence,\n                \"word_counter\": Counter(cleaned_words)\n            })\n\n    # --- 3. Score Sentences using collections.Counter ---\n    # Calculate a relevance score for each sentence in the knowledge base\n    # by summing the frequencies of question keywords found within it.\n    scored_sentences = []\n    for item in processed_kb_data:\n        score = 0\n        sentence_word_counter = item[\"word_counter\"]\n        \n        # Efficiently sum up the counts of question keywords using Counter's fast lookup.\n        # If a keyword is not in the sentence, Counter[keyword] returns 0.\n        for q_word in question_keywords:\n            score += sentence_word_counter[q_word]\n\n        if score > 0: # Only keep sentences that contain at least one question keyword\n            scored_sentences.append((score, item[\"original\"]))\n\n    # --- 4. Select Best Sentences ---\n    # Sort sentences by their relevance score in descending order\n    scored_sentences.sort(key=lambda x: x[0], reverse=True)\n\n    if not scored_sentences:\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\"\n\n    # Collect all sentences that share the highest relevance score\n    max_score = scored_sentences[0][0]\n    relevant_sentences = []\n    for score, sentence in scored_sentences:\n        if score == max_score:\n            relevant_sentences.append(sentence)\n        else:\n            # Optionally, one could include a few more top-scoring sentences\n            # even if their score is slightly lower than max_score, up to a limit.\n            # For simplicity, we stick to only sentences with the absolute max score here.\n            break \n            \n    # --- 5. Formulate Answer ---\n    if relevant_sentences:\n        # Join the selected relevant sentences to form the answer\n        answer = \" \".join(relevant_sentences)\n        return f\"Regarding your question: {answer}\"\n    else:\n        # Fallback if no relevant sentences were found (should be caught earlier, but good for robustness)\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\""
+      },
+      "baseline_metric": 20.880000000000003
+    },
+    {
+      "step": 3,
+      "action": "ROUND_COMPLETE",
+      "proposed_metric": 72.4168,
+      "previous_metric": 66.425,
+      "pre_expansion_metric": 67.4194,
+      "test_suite_size": 19,
+      "tournament": false,
+      "code_agents": [
+        {
+          "id": "CA0",
+          "wins": 1,
+          "gen": 0
+        }
+      ],
+      "test_agents": [
+        {
+          "id": "TA0",
+          "wins": 1,
+          "gen": 0
+        }
+      ],
+      "code_agents_full": [
+        {
+          "agent_id": "CA0",
+          "strategy": "Improve computation speed for support by using `collections.Counter` or leveraging vectorized operations from libraries like NumPy and Pandas, rather than traditional loop-based counting. This approach significantly reduces execution time for large transaction sets.",
+          "generation": 0,
+          "wins": 1,
+          "current_code": "import re\nfrom collections import Counter\n\ndef answer_question(question, knowledge_base):\n    \"\"\"Answer a customer question using the knowledge base.\n\n    This improved version leverages collections.Counter for efficient word frequency\n    analysis to identify relevant parts of the knowledge base, enhancing both\n    answer quality and computation speed for large text bodies.\n\n    Args:\n        question: str, the customer's question\n        knowledge_base: str, product information text\n\n    Returns: str, the answer\n    \"\"\"\n\n    # --- Helper Functions for Text Processing ---\n    def _clean_text(text):\n        \"\"\"Lowercase and remove punctuation from text, then split into words.\"\"\"\n        text = text.lower()\n        # Remove anything that's not a letter, number, or space\n        text = re.sub(r'[^a-z0-9\\s]', '', text)\n        return text.split()\n\n    def _split_into_sentences(text):\n        \"\"\"\n        Split text into sentences using basic punctuation rules.\n        Handles common abbreviations like \"Mr.\", \"U.S.\" to avoid incorrect splits.\n        \"\"\"\n        # Regex to split sentences at periods, question marks, or exclamation points,\n        # but not after abbreviations (like \"Dr.\") or decimals.\n        sentences = re.split(r'(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?|\\!)\\s', text)\n        return [s.strip() for s in sentences if s.strip()]\n\n    # --- 1. Preprocess Question ---\n    # Extract unique words from the question for keyword matching\n    question_keywords = set(_clean_text(question))\n    \n    if not question_keywords:\n        return \"Thank you for contacting us. Please visit our website for more information.\"\n\n    # --- 2. Preprocess Knowledge Base ---\n    kb_sentences = _split_into_sentences(knowledge_base)\n    \n    # Store original sentences along with their word frequency counters\n    # This pre-computation uses collections.Counter once per sentence\n    processed_kb_data = []\n    for original_sentence in kb_sentences:\n        cleaned_words = _clean_text(original_sentence)\n        if cleaned_words: # Ensure the sentence is not empty after cleaning\n            processed_kb_data.append({\n                \"original\": original_sentence,\n                \"word_counter\": Counter(cleaned_words)\n            })\n\n    # --- 3. Score Sentences using collections.Counter ---\n    # Calculate a relevance score for each sentence in the knowledge base\n    # by summing the frequencies of question keywords found within it.\n    scored_sentences = []\n    for item in processed_kb_data:\n        score = 0\n        sentence_word_counter = item[\"word_counter\"]\n        \n        # Efficiently sum up the counts of question keywords using Counter's fast lookup.\n        # If a keyword is not in the sentence, Counter[keyword] returns 0.\n        for q_word in question_keywords:\n            score += sentence_word_counter[q_word]\n\n        if score > 0: # Only keep sentences that contain at least one question keyword\n            scored_sentences.append((score, item[\"original\"]))\n\n    # --- 4. Select Best Sentences ---\n    # Sort sentences by their relevance score in descending order\n    scored_sentences.sort(key=lambda x: x[0], reverse=True)\n\n    if not scored_sentences:\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\"\n\n    # Collect all sentences that share the highest relevance score\n    max_score = scored_sentences[0][0]\n    relevant_sentences = []\n    for score, sentence in scored_sentences:\n        if score == max_score:\n            relevant_sentences.append(sentence)\n        else:\n            # Optionally, one could include a few more top-scoring sentences\n            # even if their score is slightly lower than max_score, up to a limit.\n            # For simplicity, we stick to only sentences with the absolute max score here.\n            break \n            \n    # --- 5. Formulate Answer ---\n    if relevant_sentences:\n        # Join the selected relevant sentences to form the answer\n        answer = \" \".join(relevant_sentences)\n        return f\"Regarding your question: {answer}\"\n    else:\n        # Fallback if no relevant sentences were found (should be caught earlier, but good for robustness)\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\"",
+          "fitness_history": [
+            69.861,
+            0.0,
+            0.0
+          ],
+          "propose_source": ""
+        }
+      ],
+      "test_agents_full": [
+        {
+          "agent_id": "TA0",
+          "strategy": "Test the function with empty input data structures (e.g., empty lists, arrays, or dataframes) or inputs where all data points are identical or represent a single trivial case. This checks for robust handling of zero-data scenarios and minimum viable data requirements.",
+          "generation": 0,
+          "wins": 1,
+          "hardness_scores": [
+            92.1
+          ]
+        }
+      ],
+      "code_map": {
+        "CA0": "import re\nfrom collections import Counter\n\ndef answer_question(question, knowledge_base):\n    \"\"\"Answer a customer question using the knowledge base.\n\n    This improved version leverages collections.Counter for efficient word frequency\n    analysis to identify relevant parts of the knowledge base, enhancing both\n    answer quality and computation speed for large text bodies.\n\n    Args:\n        question: str, the customer's question\n        knowledge_base: str, product information text\n\n    Returns: str, the answer\n    \"\"\"\n\n    # --- Helper Functions for Text Processing ---\n    def _clean_text(text):\n        \"\"\"Lowercase and remove punctuation from text, then split into words.\"\"\"\n        text = text.lower()\n        # Remove anything that's not a letter, number, or space\n        text = re.sub(r'[^a-z0-9\\s]', '', text)\n        return text.split()\n\n    def _split_into_sentences(text):\n        \"\"\"\n        Split text into sentences using basic punctuation rules.\n        Handles common abbreviations like \"Mr.\", \"U.S.\" to avoid incorrect splits.\n        \"\"\"\n        # Regex to split sentences at periods, question marks, or exclamation points,\n        # but not after abbreviations (like \"Dr.\") or decimals.\n        sentences = re.split(r'(?<!\\w\\.\\w.)(?<![A-Z][a-z]\\.)(?<=\\.|\\?|\\!)\\s', text)\n        return [s.strip() for s in sentences if s.strip()]\n\n    # --- 1. Preprocess Question ---\n    # Extract unique words from the question for keyword matching\n    question_keywords = set(_clean_text(question))\n    \n    if not question_keywords:\n        return \"Thank you for contacting us. Please visit our website for more information.\"\n\n    # --- 2. Preprocess Knowledge Base ---\n    kb_sentences = _split_into_sentences(knowledge_base)\n    \n    # Store original sentences along with their word frequency counters\n    # This pre-computation uses collections.Counter once per sentence\n    processed_kb_data = []\n    for original_sentence in kb_sentences:\n        cleaned_words = _clean_text(original_sentence)\n        if cleaned_words: # Ensure the sentence is not empty after cleaning\n            processed_kb_data.append({\n                \"original\": original_sentence,\n                \"word_counter\": Counter(cleaned_words)\n            })\n\n    # --- 3. Score Sentences using collections.Counter ---\n    # Calculate a relevance score for each sentence in the knowledge base\n    # by summing the frequencies of question keywords found within it.\n    scored_sentences = []\n    for item in processed_kb_data:\n        score = 0\n        sentence_word_counter = item[\"word_counter\"]\n        \n        # Efficiently sum up the counts of question keywords using Counter's fast lookup.\n        # If a keyword is not in the sentence, Counter[keyword] returns 0.\n        for q_word in question_keywords:\n            score += sentence_word_counter[q_word]\n\n        if score > 0: # Only keep sentences that contain at least one question keyword\n            scored_sentences.append((score, item[\"original\"]))\n\n    # --- 4. Select Best Sentences ---\n    # Sort sentences by their relevance score in descending order\n    scored_sentences.sort(key=lambda x: x[0], reverse=True)\n\n    if not scored_sentences:\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\"\n\n    # Collect all sentences that share the highest relevance score\n    max_score = scored_sentences[0][0]\n    relevant_sentences = []\n    for score, sentence in scored_sentences:\n        if score == max_score:\n            relevant_sentences.append(sentence)\n        else:\n            # Optionally, one could include a few more top-scoring sentences\n            # even if their score is slightly lower than max_score, up to a limit.\n            # For simplicity, we stick to only sentences with the absolute max score here.\n            break \n            \n    # --- 5. Formulate Answer ---\n    if relevant_sentences:\n        # Join the selected relevant sentences to form the answer\n        answer = \" \".join(relevant_sentences)\n        return f\"Regarding your question: {answer}\"\n    else:\n        # Fallback if no relevant sentences were found (should be caught earlier, but good for robustness)\n        return \"Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information.\""
+      },
+      "baseline_metric": 20.880000000000003
+    }
+  ],
+  "token_usage": {
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "calls": 0
+  },
+  "estimated_cost_usd": 0,
+  "note": "Completed 3/6 rounds due to Gemini API timeouts on support task"
+}

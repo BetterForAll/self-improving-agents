@@ -8,143 +8,84 @@ def validate_email(email):
 
     Returns: True if valid, False if invalid
     """
-    # 0. Basic type and emptiness check
-    if not isinstance(email, str) or not email:
+    # 1. Check for leading/trailing whitespace
+    if email.strip() != email:
         return False
 
-    # Split the email into local part and domain part at the *first* '@'
-    # This correctly handles cases where the local part might contain an '@' if quoted.
-    parts = email.split('@', 1)
-    if len(parts) != 2:
-        # If there's no '@' symbol, or if split('@', 1) somehow results in more or less than 2 parts, it's invalid.
-        # (Technically, split will always result in 2 parts if '@' is present, or 1 if not).
-        # This effectively checks for exactly one '@' that acts as a separator.
+    # The original step-by-step checks for local and domain parts are now
+    # largely replaced or made redundant by a more comprehensive regular expression
+    # for better RFC compliance and handling of edge cases.
+
+    # Regex for an unquoted local part (dot-atom as per RFC 5322)
+    # Allows alphanumeric characters, and specific symbols: !#$%&'*+-/=?^_`{|}~
+    # Dots are allowed, but not at the start/end or consecutively, which this pattern ensures.
+    dot_atom_pattern = r"[a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]+(?:\.[a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]+)*"
+    
+    # Regex for a quoted-string local part (as per RFC 5322)
+    # Allows almost any character inside quotes, except an unescaped double quote (") or backslash (\).
+    # `[^"\\]` matches any character that is not a double quote or a backslash.
+    # `\\.` matches a backslash followed by any character (to allow escaped characters like \" or \\).
+    # `(?:...)` is a non-capturing group. `*` allows zero or more occurrences of the content inside quotes.
+    quoted_string_pattern = r'"(?:[^"\\]|\\.)*"'
+
+    # Combined local part pattern: either a dot-atom OR a quoted-string.
+    local_part_full_pattern = f"(?:{dot_atom_pattern}|{quoted_string_pattern})"
+
+    # Regex for a single domain label (e.g., "example", "com", "sub-domain")
+    # As per RFC 1035/1123, labels must start and end with an alphanumeric character.
+    # They can contain alphanumeric characters and hyphens in between.
+    # Maximum length of 63 characters per label is standard, but the regex enforces
+    # start/end chars and hyphen content for up to 61 middle chars.
+    domain_label_pattern = r"[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
+    
+    # Regex for the Top-Level Domain (TLD)
+    # TLDs are typically at least two alphabetic characters (e.g., "com", "org", "co.uk").
+    # This pattern excludes purely numeric TLDs (e.g., '123' in an IP address),
+    # which fixes the 'user@192.168.1.123' failure.
+    tld_pattern = r"[a-zA-Z]{2,}"
+
+    # Full domain pattern: one or more labels separated by dots, ending with a TLD.
+    # This structure inherently validates against empty labels, leading/trailing dots,
+    # and consecutive dots in the domain name.
+    domain_full_pattern = f"(?:{domain_label_pattern}\\.)+{tld_pattern}"
+
+    # Combine the local part and domain part with the '@' separator.
+    # The `^` and `$` anchors ensure that the entire email string matches the pattern.
+    full_email_pattern = fr"^{local_part_full_pattern}@{domain_full_pattern}$"
+
+    # Attempt to match the entire email string against the comprehensive pattern.
+    match = re.fullmatch(full_email_pattern, email)
+
+    if not match:
         return False
 
-    local_part, domain_part = parts[0], parts[1]
+    # Extract local and domain parts after successful regex match.
+    # We use split('@', 1) to ensure we split only on the first (unquoted) '@',
+    # which the regex inherently validates as the domain separator.
+    local_part, domain_part = email.split('@', 1)
 
-    # 3. Local part and Domain part cannot be empty
-    if not local_part or not domain_part:
+    # 4. Local part length validation
+    # RFC 5322 section 3.4.1 states that the local-part SHOULD NOT exceed 64 characters.
+    # This fixes the 'aaaaaaaa... @example.com' failure.
+    if len(local_part) > 64:
         return False
 
-    # --- Whitespace validation (Adjusted for quoted local parts) ---
-    is_quoted_local_part = False
-    if local_part.startswith('"') and local_part.endswith('"'):
-        is_quoted_local_part = True
-        # For quoted local parts, spaces are allowed *inside* the quotes.
-        # But no leading/trailing whitespace on the whole email string (e.g. " user"@example.com).
-        # And no whitespace in the domain part.
-        if email[0].isspace() or email[-1].isspace() or any(c.isspace() for c in domain_part):
-            return False
-    else:
-        # For unquoted local parts, no whitespace is allowed anywhere in the entire string.
-        if any(c.isspace() for c in email):
-            return False
-
-    # --- Local part validation ---
-    if is_quoted_local_part:
-        # Remove quotes to validate inner content
-        inner_local_part = local_part[1:-1]
-
-        # Quoted local part cannot be empty (e.g. ""@example.com)
-        if not inner_local_part and local_part != '""': # " " is ok, "" is not
-            return False
-
-        # Simplified RFC 5322 validation for quoted strings.
-        # This covers '"a@b"@example.com' and '"first last"@example.com'
-        # Quoted strings allow almost any character, but unescaped " and \ are forbidden.
-        # RFC specifies 'quoted-pair = "\" (VCHAR / WSP)' meaning backslash followed by
-        # any visible character or space. We'll check for unescaped " and \.
-        i = 0
-        while i < len(inner_local_part):
-            if inner_local_part[i] == '\\':
-                if i + 1 >= len(inner_local_part): # Backslash at end, e.g., "abc\"
-                    return False # Invalid escape sequence (backslash must escape something)
-                # Skip the escaped character as it's valid
-                i += 2
-            elif inner_local_part[i] == '"':
-                return False # Unescaped quote inside quoted string, e.g., "a"b"@example.com
-            else:
-                i += 1
-
-    else: # Unquoted local part
-        # Cannot start or end with '.'
-        if local_part.startswith('.') or local_part.endswith('.'):
-            return False
-        # Cannot have consecutive '..' in local part
-        if '..' in local_part:
-            return False
-
-        # Validate characters in unquoted local part
-        # Fix for 'useré@example.com': expected False, got True
-        # According to RFC 5322, allowed characters in an unquoted local part (atom) are:
-        # ATEXT = ALPHA / DIGIT / "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "/" / "=" / "?" / "^" / "_" / "`" / "{" / "|" / "}" / "~"
-        # The period '.' is also allowed but with restrictions (not start/end, not consecutive).
-        allowed_local_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'*+-/=?^_`{|}~."
-        for char in local_part:
-            if char not in allowed_local_chars:
-                return False
-
-    # --- Domain part validation ---
-    # Check for domain literal (e.g., 'user@[192.168.1.1]')
-    if domain_part.startswith('[') and domain_part.endswith(']'):
-        # Fix for 'user@[192.168.1.1]': expected True, got False
-        ip_literal = domain_part[1:-1]
-        if not ip_literal: # Empty domain literal `[]`
-            return False
-
-        # For the given test case, it's an IPv4 address.
-        # RFC 5321 allows IPv4-address-literal and IPv6-address-literal.
-        # Implement a simplistic IPv4 validation
-        ipv4_pattern = re.compile(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$")
-        match = ipv4_pattern.match(ip_literal)
-
-        if match:
-            # Check octet ranges (0-255)
-            for i in range(1, 5):
-                if not (0 <= int(match.group(i)) <= 255):
-                    return False
-            return True # Valid IPv4 literal, email is valid
-
-        # Other literal types (e.g., IPv6) are complex to validate fully without a dedicated module.
-        # Since the failing test case only includes IPv4, we'll return False for other unrecognized literal formats.
-        return False # Not a valid IPv4 domain literal.
-
-    # Standard domain validation (for hostnames)
-    # Domain must contain at least one '.'
-    if '.' not in domain_part:
+    # 5. Domain part length validation
+    # RFC 1035 section 2.3.4 limits domain names to 255 characters.
+    if len(domain_part) > 255:
         return False
 
-    # Cannot start or end with '-'
-    if domain_part.startswith('-') or domain_part.endswith('-'):
-        return False
-
-    # Cannot have consecutive '..' in domain part
-    if '..' in domain_part:
-        return False
-
-    # Split domain into labels (e.g., 'example.com' -> ['example', 'com'])
+    # 6. Top-Level Domain (TLD) specific checks
+    # The TLD is the last part of the domain after the last dot.
     domain_labels = domain_part.split('.')
-
-    # Each domain label must not be empty
-    # Covers 'user@.com' (domain_labels will be ['', 'com'])
-    if any(not label for label in domain_labels):
+    tld = domain_labels[-1]
+    
+    # Check for reserved or disallowed TLDs.
+    # '.localhost' is a special-use domain name (RFC 2606) and is generally
+    # considered invalid for public email addresses.
+    # This fixes the 'user@example.localhost' failure.
+    if tld.lower() == 'localhost':
         return False
 
-    # TLD (Top-Level Domain) must be at least 2 characters long
-    # Covers 'user@example.c'
-    if len(domain_labels[-1]) < 2:
-        return False
-
-    # Each domain label should not start or end with a hyphen
-    # And should only contain alphanumeric characters and hyphens internally
-    for label in domain_labels:
-        if not label: # Defensive, already caught by `any(not label ...)`
-            continue
-        if label.startswith('-') or label.endswith('-'):
-            return False
-        # Ensure all characters in a label are alphanumeric or hyphen (except start/end handled above)
-        if not all(c.isalnum() or c == '-' for c in label):
-            return False
-
+    # All checks passed, the email address is considered valid.
     return True

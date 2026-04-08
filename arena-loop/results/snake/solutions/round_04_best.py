@@ -1,145 +1,160 @@
-import heapq
+import collections
 
 def next_move(snake, food, width, height):
-    """Pick the next direction for the snake using A* search to reliably locate food and predict potential self-collisions.
+    head = snake[0]
+    tail = snake[-1]
 
-    Args:
-        snake: list of (row, col) tuples, snake[0] is the head
-        food:  (row, col) tuple, position of the food
-        width: int, board width
-        height: int, board height
+    # Define possible moves as (dr, dc) tuples and their string names
+    MOVES = {"UP": (-1, 0), "DOWN": (1, 0), "LEFT": (0, -1), "RIGHT": (0, 1)}
 
-    Returns: one of "UP", "DOWN", "LEFT", "RIGHT"
-    """
+    def is_valid_cell(r, c):
+        """Check if a cell is within board boundaries."""
+        return 0 <= r < height and 0 <= c < width
 
-    head_r, head_c = snake[0]
-    food_r, food_c = food
+    def get_snake_obstacles(current_snake_body, ignore_last_segment=False):
+        """
+        Generates a set of obstacle cells from the snake's body.
+        If ignore_last_segment is True, the very last segment (tail) is excluded,
+        as it's considered free for the snake to move into.
+        """
+        obstacles = set(current_snake_body)
+        if ignore_last_segment and len(current_snake_body) > 0:
+            obstacles.discard(current_snake_body[-1])
+        return obstacles
 
-    # Define possible moves and their deltas
-    MOVES = {
-        "UP": (-1, 0),
-        "DOWN": (1, 0),
-        "LEFT": (0, -1),
-        "RIGHT": (0, 1)
-    }
-    REVERSE_MOVES = {
-        (-1, 0): "UP",
-        (1, 0): "DOWN",
-        (0, -1): "LEFT",
-        (0, 1): "RIGHT"
-    }
+    def bfs(start_pos, target_pos, current_obstacles, return_path=True):
+        """
+        Performs a Breadth-First Search to find a path from start_pos to target_pos.
+        
+        Args:
+            start_pos (tuple): (row, col) of the starting cell.
+            target_pos (tuple): (row, col) of the target cell.
+            current_obstacles (set): A set of (row, col) tuples that are blocked.
+            return_path (bool): If True, returns the list of moves (e.g., ["UP", "RIGHT"]).
+                                If False, returns True if a path exists, False otherwise.
+        
+        Returns:
+            list or bool: The path (if return_path=True and path found), True (if return_path=False and path found),
+                          None (if return_path=True and no path), False (if return_path=False and no path).
+        """
+        queue = collections.deque([(start_pos, [])]) # (current_cell, path_to_current_cell_moves)
+        visited = {start_pos}
 
-    # --- A* Pathfinding to Food ---
+        # If start_pos is already the target, an empty path (or True for reachability) is valid.
+        if start_pos == target_pos:
+            return [] if return_path else True
+
+        while queue:
+            (r, c), path = queue.popleft()
+
+            for move_name, (dr, dc) in MOVES.items():
+                nr, nc = r + dr, c + dc
+                next_pos = (nr, nc)
+
+                if not is_valid_cell(nr, nc):
+                    continue
+
+                # If the next position is the target
+                if next_pos == target_pos:
+                    if return_path:
+                        return path + [move_name]
+                    else:
+                        return True
+
+                # If the next position is safe (not an obstacle and not visited)
+                if next_pos not in current_obstacles and next_pos not in visited:
+                    visited.add(next_pos)
+                    new_path = path + [move_name]
+                    queue.append((next_pos, new_path))
+        
+        return None if return_path else False
+
+    # --- Phase 1: Attempt to find a path to food that also allows for an escape ---
+
+    # Calculate obstacles for pathfinding to food. The snake's tail is considered free
+    # because it will move out of the way.
+    obstacles_for_food_path = get_snake_obstacles(snake, ignore_last_segment=True)
+    path_to_food = bfs(head, food, obstacles_for_food_path, return_path=True)
+
+    if path_to_food:
+        # If a path to food is found, simulate eating and check for an escape route.
+        # The simulated snake after eating includes the food cell as the new head,
+        # and its body is effectively one segment longer (the old tail does NOT disappear yet for this check).
+        simulated_snake_body_after_eating = [food] + snake
+        
+        # Obstacles for finding an escape path: the entire *longer* simulated snake body.
+        obstacles_for_escape = get_snake_obstacles(simulated_snake_body_after_eating, ignore_last_segment=False)
+        
+        # The target for the escape path is the original tail position, as this is the cell
+        # that would eventually become free. This cell must not be considered an obstacle itself.
+        if tail in obstacles_for_escape:
+            obstacles_for_escape.discard(tail)
+        
+        # Check if there is a path from the new head (food) to the old tail.
+        has_escape_path = bfs(food, tail, obstacles_for_escape, return_path=False)
+
+        if has_escape_path:
+            # If a safe path to food and an escape path exist, take the first step towards food.
+            return path_to_food[0]
+
+    # --- Phase 2: No safe path to food. Prioritize survival by finding the safest move. ---
+    # Find a move that keeps the snake from immediately dying and ideally allows
+    # it to eventually reach its current tail (to avoid self-entrapment).
     
-    # Obstacles for A* to food: All current snake body segments.
-    # If the snake finds food, it will grow, so the tail position does NOT free up.
-    # Therefore, any part of the current snake body is considered an obstacle.
-    a_star_obstacles = set(snake) 
+    best_survival_move = None
+    longest_path_to_tail_found = -1
 
-    def heuristic(node_r, node_c):
-        """Manhattan distance heuristic for A*."""
-        return abs(node_r - food_r) + abs(node_c - food_c)
+    # For survival moves, the current tail is still considered free as the snake will move.
+    obstacles_for_current_moves = get_snake_obstacles(snake, ignore_last_segment=True)
 
-    # open_set is a priority queue of (f_score, (row, col)) tuples
-    open_set = []
-    heapq.heappush(open_set, (heuristic(head_r, head_c), (head_r, head_c)))
+    for move_name, (dr, dc) in MOVES.items():
+        next_r, next_c = head[0] + dr, head[1] + dc
+        next_pos = (next_r, next_c)
 
-    # came_from maps (row, col) to its predecessor (row, col) in the cheapest path found so far
-    came_from = {}
-
-    # g_score is the cost from the start node (snake's head) to the current node
-    g_score = {(head_r, head_c): 0}
-
-    # f_score = g_score + h_score (estimated total cost)
-    f_score = {(head_r, head_c): heuristic(head_r, head_c)}
-
-    path_to_food = None
-
-    while open_set:
-        current_f_score, current_node = heapq.heappop(open_set)
-        current_r, current_c = current_node
-
-        # Optimization: If we've already found a shorter path to current_node, skip this one.
-        # This can happen if a node was pushed multiple times with different f_scores.
-        if current_node in f_score and current_f_score > f_score[current_node]:
-            continue
-
-        if current_node == food:
-            # Path to food found, reconstruct it by tracing back from the food to the head
-            path_to_food = []
-            while current_node in came_from:
-                path_to_food.append(current_node)
-                current_node = came_from[current_node]
-            path_to_food.append((head_r, head_c)) # Add the head to complete the path
-            path_to_food.reverse() # Path now goes from head to food
-            break # Exit the A* loop as a path has been found
-
-        # Explore neighbors
-        for move_name, (dr, dc) in MOVES.items():
-            neighbor_r, neighbor_c = current_r + dr, current_c + dc
-            neighbor_node = (neighbor_r, neighbor_c)
-
-            # Check if the neighbor is within board boundaries
-            if not (0 <= neighbor_r < height and 0 <= neighbor_c < width):
-                continue
-
-            # Check for collision with snake's body (using a_star_obstacles set)
-            if neighbor_node in a_star_obstacles:
-                continue
-
-            # Calculate the cost to reach this neighbor from the start
-            tentative_g_score = g_score[current_node] + 1
-
-            # If this path to neighbor is better than any previous one, or it's a new node
-            if neighbor_node not in g_score or tentative_g_score < g_score[neighbor_node]:
-                came_from[neighbor_node] = current_node
-                g_score[neighbor_node] = tentative_g_score
-                f_score[neighbor_node] = tentative_g_score + heuristic(neighbor_r, neighbor_c)
-                heapq.heappush(open_set, (f_score[neighbor_node], neighbor_node))
-
-    # --- Decision Making ---
-
-    if path_to_food and len(path_to_food) > 1:
-        # If A* found a path to food (and the path is longer than just the head itself),
-        # take the first step along that path.
-        next_node_r, next_node_c = path_to_food[1]
-        delta_r = next_node_r - head_r
-        delta_c = next_node_c - head_c
-        return REVERSE_MOVES[(delta_r, delta_c)]
-    else:
-        # If no path to food was found (e.g., snake is trapped, or food is unreachable),
-        # or if food is exactly on the head (path_to_food length 1),
-        # use a fallback strategy: find any immediately safe move to stay alive.
-        
-        # Obstacles for fallback: All snake segments EXCEPT the tail.
-        # If the snake doesn't eat, its tail position will free up in the next move.
-        # If the snake has only a head, this set will be empty.
-        fallback_obstacles = set(snake[:-1]) 
-        
-        safe_moves = []
-        for move_name, (dr, dc) in MOVES.items():
-            next_r, next_c = head_r + dr, head_c + dc
-            next_pos = (next_r, next_c)
-
-            is_safe = True
-            # Check boundaries
-            if not (0 <= next_r < height and 0 <= next_c < width):
-                is_safe = False
-            # Check collision with snake body (excluding the tail for non-food moves)
-            if is_safe and next_pos in fallback_obstacles:
-                is_safe = False
+        # Check if the immediate potential move is valid (within bounds and not hitting its own body,
+        # where the tail is considered free).
+        if is_valid_cell(next_r, next_c) and next_pos not in obstacles_for_current_moves:
+            # Simulate the snake moving one step for this potential survival move.
+            # The new head is `next_pos`. The new body is `[next_pos] + snake[:-1]`.
+            # For checking reachability to the tail, this new body forms the obstacles.
+            simulated_body_after_move = [next_pos] + snake[:-1]
             
-            if is_safe:
-                safe_moves.append(move_name) # Store the direction string if it's safe
+            # Obstacles for checking future tail reachability: the full simulated body.
+            obstacles_for_tail_reachability = get_snake_obstacles(simulated_body_after_move, ignore_last_segment=False)
+            
+            # The target for this pathfinding is the *original* tail position, as this cell
+            # will become free. Ensure it's not in the obstacles set.
+            if tail in obstacles_for_tail_reachability:
+                obstacles_for_tail_reachability.discard(tail)
+            
+            # Check if, after making this move, the snake can still reach its tail.
+            # This ensures it doesn't immediately trap itself.
+            path_to_tail = bfs(next_pos, tail, obstacles_for_tail_reachability, return_path=True)
 
-        if safe_moves:
-            # If there are multiple safe moves, return the first one found.
-            # This provides a deterministic behavior based on the iteration order of MOVES.
-            # More advanced survival strategies could involve finding the longest safe path
-            # or a path that leads towards the snake's tail.
-            return safe_moves[0]
-        else:
-            # If no safe move is found, the snake is completely trapped,
-            # and the game should effectively be over. Returning "RIGHT" here is a default,
-            # but in a real game, this would typically lead to immediate termination.
-            return "RIGHT"
+            if path_to_tail is not None: # A path to the tail exists
+                # Prioritize moves that result in a longer path to the tail,
+                # as this generally indicates more open space for maneuverability.
+                if len(path_to_tail) > longest_path_to_tail_found:
+                    longest_path_to_tail_found = len(path_to_tail)
+                    best_survival_move = move_name
+                elif best_survival_move is None: # If this is the first safe path found, take it.
+                    best_survival_move = move_name
+
+    if best_survival_move:
+        return best_survival_move
+    
+    # --- Phase 3: Fallback - All paths lead to immediate death or guaranteed entrapment. ---
+    # This scenario means the snake is completely trapped and will die.
+    # Just return any immediately valid move if possible, or a default.
+    # This ensures the game can continue for one more turn, even if fatal.
+    for move_name, (dr, dc) in MOVES.items():
+        next_r, next_c = head[0] + dr, head[1] + dc
+        next_pos = (next_r, next_c)
+        # Here we only check for immediate collisions (walls or non-moving body parts)
+        # The `obstacles_for_current_moves` already considers the tail as free.
+        if is_valid_cell(next_r, next_c) and next_pos not in obstacles_for_current_moves:
+            return move_name
+
+    # If even the most basic immediate safe move isn't possible (fully surrounded),
+    # the snake is definitely doomed. Return a default, it will hit something.
+    return "UP"

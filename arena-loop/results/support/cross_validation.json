@@ -1,40 +1,45 @@
 {
   "test_suite_size": 10,
-  "expanded_suite_size": 28,
+  "expanded_suite_size": 19,
   "scoring_method": "rubric",
   "judge_model": "gemini-2.5-flash",
   "scores": {
     "autoresearch": {
       "name": "AutoResearch",
       "score": 56.14,
-      "expanded_score": 53.32892857142857
+      "expanded_score": 52.80368421052631
     },
     "feedback-loop": {
       "name": "Feedback Loop",
-      "score": 74.67,
-      "expanded_score": 77.55392857142859
+      "score": 72.86,
+      "expanded_score": 82.09105263157895
     },
     "hyperagent": {
       "name": "HyperAgent",
-      "score": 42.67,
-      "expanded_score": 37.85142857142857
+      "score": 39.01,
+      "expanded_score": 45.82
+    },
+    "arena-single": {
+      "name": "Arena Single",
+      "score": 65.6,
+      "expanded_score": 73.0421052631579
     },
     "arena-loop": {
       "name": "Arena Loop",
-      "score": 70.67,
-      "expanded_score": 76.52035714285715
+      "score": 69.86,
+      "expanded_score": 71.46315789473684
     },
     "baseline": {
       "name": "Baseline",
-      "score": 18.09,
-      "expanded_score": 16.426785714285714
+      "score": 21.01,
+      "expanded_score": 16.708947368421054
     }
   },
   "token_usage": {
-    "prompt_tokens": 225512,
-    "completion_tokens": 1023,
-    "total_tokens": 581890,
-    "calls": 1023
+    "prompt_tokens": 203244,
+    "completion_tokens": 901,
+    "total_tokens": 509059,
+    "calls": 901
   },
-  "estimated_cost_usd": 0.0702111
+  "estimated_cost_usd": 0.0632257
 }

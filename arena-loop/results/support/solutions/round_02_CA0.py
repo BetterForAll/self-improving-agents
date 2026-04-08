@@ -1,19 +1,16 @@
 import re
-from collections import defaultdict
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
 
-    This improved version processes the knowledge base and the question to find
-    the most relevant sentences. It utilizes hash maps (Python dictionaries)
-    to build an inverted index, replacing naive linear search with efficient
-    lookups for "support" calculation (i.e., identifying relevant text).
-    This drastically reduces execution time for larger knowledge bases and
-    improves the quality_score by providing an actual answer based on the KB.
-
-    This version further enhances quality by filtering common stop words,
-    leading to more meaningful keyword matches and improved relevance ranking,
-    thus directly impacting the quality_score.
+    This improved version leverages scikit-learn's TfidfVectorizer for efficient
+    text representation and cosine similarity for relevance scoring. This approach
+    significantly enhances both answer quality (via TF-IDF weighting and stop-word
+    removal) and computation speed for large knowledge bases by utilizing vectorized
+    operations from highly optimized libraries.
 
     Args:
         question: str, the customer's question
@@ -22,98 +19,124 @@ def answer_question(question, knowledge_base):
     Returns: str, the answer
     """
 
-    # Define a set of common English stop words.
-    # This list can be expanded or loaded from a library like NLTK if available,
-    # but for a self-contained solution, a static set is efficient.
-    stop_words = {
-        "a", "an", "the", "and", "or", "but", "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did", "of", "in", "on", "at", "by", "for", "with",
-        "from", "about", "as", "into", "through", "to", "up", "down", "out", "off", "over",
-        "under", "again", "further", "then", "once", "here", "there", "when", "where", "why",
-        "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such",
-        "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can",
-        "will", "just", "don", "should", "now", "d", "ll", "m", "o", "re", "ve", "y", "ain",
-        "aren", "couldn", "didn", "doesn", "hadn", "hasn", "haven", "isn", "ma", "mightn",
-        "mustn", "needn", "shan", "shouldn", "wasn", "weren", "won", "wouldn"
-    }
+    # --- Helper Function for Sentence Splitting ---
+    def _split_into_sentences(text):
+        """
+        Split text into sentences using basic punctuation rules.
+        Handles common abbreviations like "Mr.", "U.S." to avoid incorrect splits.
+        """
+        # Regex to split sentences at periods, question marks, or exclamation points,
+        # but not after abbreviations (like "Dr.") or decimals.
+        sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text)
+        return [s.strip() for s in sentences if s.strip()]
 
-    # 1. Preprocessing and Indexing the Knowledge Base
-    # Split the knowledge base into sentences.
-    # The regex attempts to split sentences correctly while ignoring common abbreviations.
-    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', knowledge_base)
-    sentences = [s.strip() for s in sentences if s.strip()]
+    # --- TF-IDF Vectorizer Preprocessor ---
+    # This preprocessor ensures text is consistently cleaned (lowercased, non-alphanumeric removed)
+    # before TfidfVectorizer's internal tokenizer processes it.
+    def tfidf_preprocessor(text):
+        text = text.lower()
+        # Remove anything that's not a letter, number, or space
+        text = re.sub(r'[^a-z0-9\s]', '', text)
+        return text
 
-    # If the knowledge base is empty or could not be processed into sentences,
-    # return a specific message.
-    if not sentences:
-        return "The knowledge base is empty or could not be processed to find answers."
+    # --- 1. Initial Question Check ---
+    # A simple check for an empty or meaningless question before heavy processing.
+    # We apply the same cleaning logic as our TFIDF preprocessor would.
+    if not tfidf_preprocessor(question).strip():
+        return "Thank you for contacting us. Please visit our website for more information."
 
-    # Build an inverted index: word -> set of sentence indices where the word appears.
-    # This uses hash maps (Python dict and set) for efficient O(1) average-case lookups.
-    inverted_index = defaultdict(set)
-    # Stores tokenized words for each sentence (after stop word removal)
-    processed_sentences_words = []
+    # --- 2. Preprocess Knowledge Base ---
+    kb_sentences = _split_into_sentences(knowledge_base)
+    
+    # Filter out any empty sentences that might result from splitting or cleaning
+    kb_sentences_cleaned = [s for s in kb_sentences if s.strip()]
 
-    for i, sentence in enumerate(sentences):
-        # Normalize sentence: convert to lowercase and extract alphanumeric words.
-        # Filter out stop words here to ensure only meaningful keywords contribute to support.
-        normalized_words = [word for word in re.findall(r'\b\w+\b', sentence.lower()) if word not in stop_words]
-        processed_sentences_words.append(normalized_words)
+    if not kb_sentences_cleaned:
+        return "Thank you for contacting us. We could not find any readable sentences in our knowledge base. Please visit our website for more information."
 
-        for word in normalized_words:
-            inverted_index[word].add(i)
+    # --- 3. Vectorize Knowledge Base and Question using TF-IDF ---
+    # Initialize TfidfVectorizer.
+    # - `preprocessor`: Uses our custom function for consistent text cleaning.
+    # - `token_pattern`: Matches sequences of alphanumeric characters, effectively treating
+    #    anything else as a delimiter. This aligns with the original word definition.
+    # - `stop_words='english'`: Removes common English stop words (e.g., "the", "is")
+    #    to focus on more meaningful terms for relevance, enhancing quality.
+    vectorizer = TfidfVectorizer(
+        preprocessor=tfidf_preprocessor,
+        token_pattern=r'\b\w+\b', 
+        stop_words='english',
+        max_features=5000 # Limit vocabulary size for very large KBs to manage memory/speed
+    )
 
-    # 2. Process the Question
-    # Normalize the question and extract keywords.
-    # Filter out stop words from the question as well, making the keyword set more focused.
-    question_words = {word for word in re.findall(r'\b\w+\b', question.lower()) if word not in stop_words}
+    # Fit the vectorizer on the knowledge base sentences and transform them.
+    # This creates a sparse matrix where each row is a sentence and columns are TF-IDF weighted terms.
+    kb_tfidf_matrix = vectorizer.fit_transform(kb_sentences_cleaned)
 
-    # If the question, after removing stop words, contains no meaningful keywords,
-    # it's unlikely we can find relevant information.
-    if not question_words:
-        return "Your question does not contain enough relevant keywords to find an answer."
+    # Transform the question into a TF-IDF vector using the *same* vectorizer.
+    question_tfidf_vector = vectorizer.transform([question])
 
-    # 3. Find Candidate Sentences (Optimized Support Calculation)
-    # Identify sentences that contain any of the question keywords using the inverted index.
-    # This step is highly efficient due to hash map lookups and set unions.
-    candidate_sentence_indices = set()
-    for q_word in question_words:
-        if q_word in inverted_index:
-            candidate_sentence_indices.update(inverted_index[q_word])
+    # Check if the question contains any terms found in the KB vocabulary.
+    # If not, the vector will be all zeros, indicating no relevant match.
+    if question_tfidf_vector.nnz == 0:
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."
 
-    # 4. Score Candidate Sentences (Refined Relevance Scoring)
-    # Rank sentences based on how many relevant (non-stop) question keywords they contain.
-    # This directly improves the 'quality_score' by focusing on meaningful matches.
-    sentence_scores = defaultdict(int)
-    for idx in candidate_sentence_indices:
-        # Retrieve the pre-processed (stop-word filtered) words for the current sentence.
-        current_sentence_words = set(processed_sentences_words[idx])
-        # Count the number of common *relevant* words between the question and the current sentence.
-        common_words_count = len(question_words.intersection(current_sentence_words))
-        sentence_scores[idx] = common_words_count
+    # --- 4. Score Sentences using Cosine Similarity ---
+    # Calculate cosine similarity between the question vector and each sentence vector
+    # in the KB matrix. This is a highly efficient, vectorized operation.
+    # The result is an array of scores, one for each sentence.
+    similarity_scores = cosine_similarity(question_tfidf_vector, kb_tfidf_matrix).flatten()
 
-    # 5. Retrieve the Best Answer
-    # If no candidate sentences were found, or the highest score is 0
-    # (meaning no common non-stop words were found in any sentence),
-    # return a specific message.
-    if not sentence_scores or max(sentence_scores.values()) == 0:
-        return "I could not find relevant information in the knowledge base for your question."
+    # --- 5. Select Best Sentences ---
+    scored_sentences = []
+    for i, score in enumerate(similarity_scores):
+        if score > 0: # Only consider sentences with a positive similarity score
+            scored_sentences.append((score, kb_sentences_cleaned[i]))
 
-    # Find the maximum score achieved by any sentence.
-    max_score = max(sentence_scores.values())
+    # Sort sentences by their relevance score in descending order
+    scored_sentences.sort(key=lambda x: x[0], reverse=True)
 
-    # Collect all sentences that achieved the maximum score.
-    best_sentence_indices = [idx for idx, score in sentence_scores.items() if score == max_score]
+    if not scored_sentences:
+        # Fallback if no relevant sentences were found after TF-IDF and similarity calculation.
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."
 
-    # Sort indices to maintain the original order of sentences for coherence in the answer.
-    best_sentence_indices.sort()
-    answer_parts = [sentences[idx] for idx in best_sentence_indices]
+    # Collect sentences that are highly relevant.
+    # We aim to provide a comprehensive answer by including sentences that are
+    # sufficiently close in relevance to the top-scoring one, up to a limit.
+    max_score = scored_sentences[0][0]
+    
+    # Define a relative threshold: include sentences that are at least 80% as relevant as the top one.
+    # This helps capture supporting details.
+    relevance_threshold = max_score * 0.8 if max_score > 0 else 0
+    
+    # Limit the number of sentences in the answer to avoid overly verbose responses.
+    max_answer_sentences = 5 
 
-    # Combine the best matching sentences to form the final answer.
-    answer = " ".join(answer_parts).strip()
+    relevant_sentences = []
+    seen_sentences = set() # To ensure unique sentences in the final answer
 
-    # Fallback in case the combined answer is somehow empty (should not happen with previous checks)
-    if not answer:
-        return "I could not find relevant information in the knowledge base for your question."
+    for score, sentence in scored_sentences:
+        # Include sentences if their score meets the threshold and we haven't reached the limit
+        if score >= relevance_threshold and len(relevant_sentences) < max_answer_sentences:
+            if sentence not in seen_sentences:
+                relevant_sentences.append(sentence)
+                seen_sentences.add(sentence)
+        elif len(relevant_sentences) >= max_answer_sentences: # Stop if max sentences reached
+            break
+        elif score < relevance_threshold and len(relevant_sentences) > 0: # Stop if score drops below threshold and we have some sentences
+            break
+        elif max_score == 0: # If the max_score itself is 0, break early as no true relevance was found
+            break
 
-    return answer
+    # Final fallback if, after all filtering, no sentences were selected (e.g., due to a very high threshold)
+    if not relevant_sentences and scored_sentences:
+        # As a last resort, just take the absolute top-scoring sentence if available.
+        if scored_sentences[0][0] > 0: # Only if it has some positive score
+            relevant_sentences.append(scored_sentences[0][1])
+
+    # --- 6. Formulate Answer ---
+    if relevant_sentences:
+        answer = " ".join(relevant_sentences)
+        return f"Regarding your question: {answer}"
+    else:
+        # Final fallback if no relevant sentences could be constructed.
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."

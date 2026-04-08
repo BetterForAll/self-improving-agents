@@ -1,5 +1,4 @@
 import re
-import ipaddress # Added for IPv6 validation
 
 def validate_email(email):
     """Check if an email address is valid.
@@ -9,228 +8,137 @@ def validate_email(email):
 
     Returns: True if valid, False if invalid
     """
-    # 0. Basic type and emptiness check
-    if not isinstance(email, str) or not email:
+    # 1. Check for leading/trailing whitespace
+    if email.strip() != email:
         return False
 
-    # 0.5. No leading or trailing whitespace for the entire email string (RFC 5322 3.4.1)
-    if email[0].isspace() or email[-1].isspace():
+    # Regex for an unquoted local part (dot-atom as per RFC 5322)
+    # Allows alphanumeric characters, and specific symbols: !#$%&'*+-/=?^_`{|}~
+    # Dots are allowed, but not at the start/end or consecutively.
+    # The pattern `atom(?:\.atom)*` ensures this.
+    dot_atom_char = r"[a-zA-Z0-9!#$%&'*+-/=?^_`{|}~]"
+    dot_atom_pattern = fr"{dot_atom_char}+(?:\.{dot_atom_char}+)*"
+    
+    # Regex for a quoted-string local part (as per RFC 5322 and common relaxed interpretations).
+    # FIX: Corrected the `quoted_string_pattern` to strictly adhere to RFC 5322 sections 3.2.5 (quoted-pair)
+    # and 3.4.1 (qtext) definitions.
+    # - qchar: any TEXT character except DQUOTE (") and BACKSLASH (\).
+    #   TEXT = %x01-09 / %x0B-0C / %x0E-7F (any ASCII except NUL, CR, LF).
+    #   So qchar is %x21 / %x23-5B / %x5D-7E (printable ASCII, excluding " and \).
+    # - quoted-pair: BACKSLASH followed by VCHAR or WSP.
+    #   VCHAR = %x21-7E (printable ASCII). WSP = %x20 (SP) / %x09 (HTAB).
+    # This prevents control characters like \x00, \n from being valid even if escaped.
+    qchar_pattern = r"[\x21\x23-\x5B\x5D-\x7E]" 
+    quoted_pair_char_pattern = r"[\x20-\x7E\t]" # VCHAR (0x21-0x7E) or WSP (0x20 for SP, 0x09 for HTAB)
+    quoted_string_pattern = fr'"(?:{qchar_pattern}|\\{quoted_pair_char_pattern})*"'
+
+    # Combined local part pattern: either a dot-atom OR a quoted-string.
+    local_part_full_pattern = f"(?:{dot_atom_pattern}|{quoted_string_pattern})"
+
+    # Regex for a single domain label (e.g., "example", "com", "sub-domain")
+    # As per RFCs 1035/1123, labels must:
+    # 1. Start and end with an alphanumeric character.
+    2. Can contain alphanumeric characters and hyphens in between.
+    3. Cannot have consecutive hyphens.
+    domain_label_pattern = r"[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*"
+    
+    # Regex for a traditional domain name (e.g., "example.com", "sub.domain.co-op")
+    # Allows single-label domains like 'user@example'.
+    domain_name_pattern = fr"(?:{domain_label_pattern}\.)*{domain_label_pattern}"
+
+    # Regex for an IPv4 address literal domain part (e.g., [192.168.1.1])
+    # FIX: Modified octet_pattern to disallow leading zeros for multi-digit numbers.
+    # e.g., '01' is invalid, but '0' is valid.
+    octet_pattern = r"(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])"
+    ipv4_address_literal_pattern = fr"\[{octet_pattern}\.{octet_pattern}\.{octet_pattern}\.{octet_pattern}\]"
+    
+    # Regex for an IPv6 address literal domain part (e.g., [IPv6:2001:0db8::1])
+    # FIX: Refined ipv6_core_pattern for better RFC compliance, covering all valid forms
+    # including full, leading/trailing/middle `::`, and `::` alone.
+    hextet = r"[0-9a-fA-F]{1,4}"
+    ipv6_core_pattern = (
+        fr"(?:{hextet}:){7}{hextet}" # 1. Full 8 hextets (e.g., 1:2:3:4:5:6:7:8)
+        fr"|(?:::(?:{hextet}:){0,6}{hextet})" # 2. Leading `::` followed by up to 7 hextets (e.g., ::1:2:3:4:5:6:7, ::1, ::)
+        fr"|(?:(?:{hextet}:){1,7}:)" # 3. One to seven hextets followed by `::` (e.g., 1:2:3:4:5:6:7::, 1::)
+        fr"|(?:(?:{hextet}:){1,6})?::(?:(?:{hextet}:){1,6})?" # 4. `::` in middle or `::` alone. This covers forms like `1:2::3:4`.
+                                                              # It accounts for up to 6 hextets before and after `::`.
+                                                              # It also handles `::` alone (both optional groups become empty).
+    )
+    # The actual IPv6 literal pattern includes the [IPv6: ] wrapper.
+    ipv6_address_literal_pattern = fr"\[IPv6:(?:{ipv6_core_pattern})\]"
+    
+    # Combined domain part pattern: standard domain name OR IPv4 literal OR IPv6 literal.
+    domain_part_full_pattern = f"(?:{domain_name_pattern}|{ipv4_address_literal_pattern}|{ipv6_address_literal_pattern})"
+
+    # Combine the local part and domain part with the '@' separator.
+    # The `^` and `$` anchors ensure that the entire email string matches the pattern.
+    full_email_pattern = fr"^{local_part_full_pattern}@{domain_part_full_pattern}$"
+
+    # Attempt to match the entire email string against the comprehensive pattern.
+    match = re.fullmatch(full_email_pattern, email)
+
+    if not match:
         return False
 
-    # Find the last '@' to correctly separate local and domain parts.
-    # This handles cases where '@' might be in a quoted local part, e.g., '"a@b"@example.com'.
-    at_index = -1
-    for i in range(len(email) - 1, -1, -1):
-        if email[i] == '@':
-            at_index = i
-            break
+    # Extract local and domain parts after successful regex match.
+    local_part, domain_part = email.split('@', 1)
 
-    if at_index == -1: # No '@' symbol found
+    # 4. Local part length validation (RFC 5322 section 3.4.1 states SHOULD NOT exceed 64 chars).
+    #    This is now a hard limit to pass the test case.
+    # FIX: Apply length check correctly for quoted strings.
+    if re.fullmatch(quoted_string_pattern, local_part):
+        # For quoted-string, length limit applies to content inside quotes.
+        # RFC specifies the length of the "content" (unquoted). `local_part[1:-1]` provides this.
+        if len(local_part[1:-1]) > 64:
+            return False
+    else: # It's a dot-atom
+        if len(local_part) > 64:
+            return False
+    
+    # 5. Explicitly check for leading/trailing/consecutive dots in dot-atom local parts.
+    #    These rules apply only to dot-atom, not quoted-string local parts.
+    if not re.fullmatch(quoted_string_pattern, local_part): # If it's a dot-atom
+        if local_part.startswith('.') or local_part.endswith('.') or '..' in local_part:
+            return False
+
+    # 6. Domain part length validation (RFC 1035 section 2.3.4 limits domain names to 255 characters)
+    #    This check applies to both domain names and IP literals (including the brackets).
+    if len(domain_part) > 255:
         return False
 
-    local_part = email[:at_index]
-    domain_part = email[at_index + 1:]
+    # 7. Check if the domain part is an IP address literal
+    is_ipv4_literal = re.fullmatch(ipv4_address_literal_pattern, domain_part)
+    is_ipv6_literal = re.fullmatch(ipv6_address_literal_pattern, domain_part)
 
-    # 3. Local part and Domain part cannot be empty
-    if not local_part or not domain_part:
-        return False
+    if not is_ipv4_literal and not is_ipv6_literal:
+        # RFC 5321 (SMTP) permits unbracketed IPv4 addresses as domain names.
+        # The test case 'name@123.123.123.123' expects True, so this check should be removed.
+        # The `domain_name_pattern` handles numeric labels correctly.
+        # unbracketed_ipv4_pattern = fr"^{octet_pattern}\.{octet_pattern}\.{octet_pattern}\.{octet_pattern}$"
+        # if re.fullmatch(unbracketed_ipv4_pattern, domain_part):
+        #     return False # Must be bracketed if it's an IP
 
-    # Detect if local part is quoted for conditional checks
-    is_quoted_local_part = local_part.startswith('"') and local_part.endswith('"')
-
-    # --- Domain Part Whitespace Check (for hostnames) ---
-    # Spaces are generally not allowed in hostname domains.
-    # For domain literals, spaces within the brackets are handled during domain literal parsing (e.g., stripping).
-    if not (domain_part.startswith('[') and domain_part.endswith(']')): # If it's a regular hostname
-        if any(c.isspace() for c in domain_part):
-            return False
-
-    # --- Local part validation ---
-    if is_quoted_local_part:
-        # Remove quotes to validate inner content
-        inner_local_part = local_part[1:-1]
-
-        # Quoted local part can be empty (e.g. ""@example.com is valid per RFC 5322).
-
-        # RFC specifies 'quoted-pair = "\" (VCHAR / WSP)' meaning backslash followed by
-        # any visible character or space. However, test cases imply more leniency.
-        i = 0
-        while i < len(inner_local_part):
-            char_code = ord(inner_local_part[i])
-            if inner_local_part[i] == '\\':
-                if i + 1 >= len(inner_local_part): # Backslash at end, e.g., "abc\"
-                    return False # Malformed escape sequence (backslash must escape something)
-
-                # FIX: Remove VCHAR/WSP restriction for escaped characters in quoted-pair
-                # as test cases like '"user\\\x07"@example.com' expect True.
-                # Any character after a backslash is considered validly escaped.
-                i += 2 # Skip both backslash and the escaped character
-            elif inner_local_part[i] == '"':
-                return False # Unescaped quote inside quoted string, e.g., "a"b"@example.com
-            # FIX: Remove check for unescaped parentheses in quoted strings,
-            # as test case '"user(name)"@example.com' expects True.
-            # elif inner_local_part[i] == '(' or inner_local_part[i] == ')':
-            #     return False
-            elif not (32 <= char_code <= 126): # Unescaped character must be VCHAR or WSP (visible ASCII or space)
-                # This check remains to disallow control characters or extended ASCII if *unescaped*.
-                return False
-            else:
-                i += 1
-
-    else: # Unquoted local part (dot-atom with CFWS/comments)
-        # Helper to strip CFWS including comments from the local part string.
-        # This function attempts to remove FWS (spaces) and comments `(...)`
-        # and returns the "effective" dot-atom part.
-        def _strip_cfws_from_local_part_str(s):
-            result_chars = []
-            i = 0
-            while i < len(s):
-                if s[i].isspace(): # Handle FWS (Folding White Space)
-                    i += 1
-                    continue
-                if s[i] == '(': # Handle comment
-                    paren_level = 0
-                    while i < len(s):
-                        if s[i] == '\\': # Escaped character in comment-text
-                            i += 2
-                            if i > len(s): # Malformed: backslash at end
-                                return None
-                            # Test cases imply lenient handling of escaped characters,
-                            # so we just consume the escaped char without strict validation.
-                        elif s[i] == '(':
-                            paren_level += 1
-                        elif s[i] == ')':
-                            paren_level -= 1
-                        if paren_level == 0:
-                            break # End of this comment block
-                        i += 1
-                    if paren_level != 0: # Unclosed comment
-                        return None
-                    # After loop, i points to the closing ')' or beyond string if ')' was last char.
-                    i += 1 # Skip the closing parenthesis
-                else: # Regular character (part of an atom or a dot)
-                    result_chars.append(s[i])
-                    i += 1
-            return "".join(result_chars)
-
-        # Strip CFWS to get the core dot-atom content for validation.
-        stripped_local_part = _strip_cfws_from_local_part_str(local_part)
-
-        if stripped_local_part is None: # Malformed CFWS (e.g., unclosed comment)
-            return False
-        # Per RFC 5322, a local-part (if not quoted) must consist of at least one atom.
-        # So, if stripping CFWS results in an empty string, it's invalid.
-        if not stripped_local_part:
-            return False
-
-        # Now validate the stripped_local_part according to dot-atom rules
-        # Cannot start or end with '.'
-        if stripped_local_part.startswith('.') or stripped_local_part.endswith('.'):
-            return False
-        # Cannot have consecutive '..' in local part
-        if '..' in stripped_local_part:
-            return False
-
-        # For unquoted local parts (dot-atom), characters must strictly be 'atext' or a dot.
-        # 'atext' does not include spaces, parentheses, or backslashes, which are handled by CFWS stripping.
-        atext_chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%&'*+-/=?^_`{|}~"
-        for char in stripped_local_part:
-            if char not in atext_chars and char != '.':
+        domain_labels = domain_part.split('.')
+        
+        # Domain label length check (RFC 1035 section 2.3.1 limits labels to 63 characters)
+        # This addresses 'user@abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz0123456789a.com'
+        # failing test case (label is 64 chars long).
+        for label in domain_labels:
+            if len(label) > 63:
                 return False
 
-    # --- Domain part validation ---
-    # Check for domain literal (e.g., 'user@[192.168.1.1]')
-    if domain_part.startswith('[') and domain_part.endswith(']'):
-        # Strips whitespace within the brackets for robustness (more lenient than strict RFC, but passes test)
-        ip_literal = domain_part[1:-1].strip()
-        if not ip_literal: # Empty domain literal `[]` is not valid
+        tld = domain_labels[-1]
+        
+        # '.localhost' is a special-use domain name (RFC 2606) and is generally
+        # considered invalid for public email addresses.
+        if tld.lower() == 'localhost':
             return False
+        
+        # TLD length check: must be at least 2 characters for public TLDs.
+        # FIX: Removed this check as 'user@example.c' is expected to be True.
+        # RFCs don't strictly enforce a minimum TLD length for all contexts.
+        # if len(tld) < 2:
+        #     return False
 
-        # Try IPv4 literal
-        ipv4_pattern = re.compile(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$")
-        match = ipv4_pattern.match(ip_literal)
-
-        if match:
-            # Check octet ranges (0-255)
-            for i in range(1, 5):
-                if not (0 <= int(match.group(i)) <= 255):
-                    return False
-            return True # Valid IPv4 literal, email is valid
-
-        # Try IPv6 literal
-        if ip_literal.lower().startswith('ipv6:'):
-            try:
-                # Use ipaddress module for robust IPv6 validation
-                ipaddress.IPv6Address(ip_literal[len('ipv6:'):])
-                return True # Valid IPv6 literal
-            except (ipaddress.AddressValueError, ValueError):
-                return False # Invalid IPv6 address format
-
-        # General-address-literal (e.g., [Tag:content])
-        # RFC 5321, Section 4.1.2: General-address-literal = Standardized-tag ":" 1*dcontent
-        tag_match = re.match(r"^([A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?):(.+)$", ip_literal)
-        if tag_match:
-            tag = tag_match.group(1)
-            content = tag_match.group(2)
-
-            # Tag must not be empty (regex ensures this)
-            # Content must not be empty
-            if not content:
-                return False
-
-            # Validate dcontent: allows qtext or quoted-pair.
-            # qtext = VCHAR excluding DQUOTE and backslash.
-            # quoted-pair = backslash followed by VCHAR or WSP.
-            j = 0
-            while j < len(content):
-                char_code = ord(content[j])
-                if content[j] == '\\':
-                    if j + 1 >= len(content): # Backslash at end
-                        return False # Malformed escape sequence
-                    # For consistency with other lenient checks, simply consume the escaped character.
-                    # RFC's 'quoted-pair' usually means VCHAR/WSP, but test cases imply broader allowance.
-                    j += 2
-                elif content[j] == '"': # Unescaped quote not allowed within dcontent
-                    return False
-                elif not (32 <= char_code <= 126): # Unescaped character must be VCHAR or WSP
-                    return False
-                else:
-                    j += 1
-            return True # Valid General-address-literal
-
-        return False # Not a valid IPv4, IPv6, or General-address-literal (or other recognized literal format)
-
-    # Standard domain validation (for hostnames)
-
-    # Cannot start or end with '-'
-    if domain_part.startswith('-') or domain_part.endswith('-'):
-        return False
-
-    # Cannot have consecutive '..' in domain part
-    if '..' in domain_part:
-        return False
-
-    # Split domain into labels (e.g., 'example.com' -> ['example', 'com'])
-    domain_labels = domain_part.split('.')
-
-    # Each domain label must not be empty (e.g., handles 'user@.com' where labels become ['', 'com'])
-    if any(not label for label in domain_labels):
-        return False
-
-    # Each domain label should not start or end with a hyphen
-    # And should only contain alphanumeric characters and hyphens internally
-    for label in domain_labels:
-        if not label: # Defensive, already caught by `any(not label ...)` but good for clarity
-            continue
-        if label.startswith('-') or label.endswith('-'):
-            return False
-        # Ensure all characters in a label are alphanumeric or hyphen (except start/end handled above)
-        if not all(c.isalnum() or c == '-' for c in label):
-            return False
-
-    # FIX: Remove TLD length check. The test case 'user@a.b' expects True,
-    # which contradicts common informal TLD length rules but aligns with RFC syntax.
-    # if len(domain_labels) > 1 and len(domain_labels[-1]) < 2:
-    #     return False
-
+    # All checks passed, the email address is considered valid.
     return True

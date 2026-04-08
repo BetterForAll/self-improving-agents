@@ -40,137 +40,106 @@
     "expected": "Large files over 10GB are supported on Pro and Enterprise plans only. If you are on Personal, you would need to upgrade."
   },
   {
-    "question": "If I have a 15GB file, can I sync it using the Personal plan?",
-    "expected": "No, large files (>10GB) are supported on Pro/Enterprise only. The Personal plan does not support syncing files of that size.",
-    "generated_by": "TA2",
+    "question": "Does the Personal plan include phone support?",
+    "expected": "No, the Personal plan only includes email support, with a response within 24 hours. Phone support is available for Enterprise plans.",
+    "generated_by": "TA0",
     "fact_checks": [
       {
-        "description": "The answer explicitly states 'No'.",
-        "keywords": [
-          "no"
-        ],
-        "weight": 3
-      },
-      {
-        "description": "The answer explains that files larger than 10GB are supported only on Pro/Enterprise plans.",
-        "keywords": [
-          ">10gb",
-          "pro/enterprise",
-          "only"
-        ],
-        "weight": 3
-      },
-      {
-        "description": "The answer states that the Personal plan does not support syncing files of the given size.",
-        "keywords": [
-          "personal plan",
-          "not support",
-          "files of that size"
-        ],
-        "weight": 2
-      }
-    ]
-  },
-  {
-    "question": "I bought the Pro plan on January 1st and cancelled on February 5th. Will I get a refund?",
-    "expected": "No, you will not receive a refund. You cancelled after more than 30 days (January 1st to February 5th is 35 days). Prorated refunds are only available within the first 30 days. After 30 days, there is no refund, and access continues until the end of the billing period.",
-    "generated_by": "TA2",
-    "fact_checks": [
-      {
-        "description": "Does the answer state that the customer will not receive a refund?",
+        "description": "Does the answer explicitly state that the Personal plan does not include phone support?",
         "keywords": [
           "no",
-          "not receive refund"
+          "personal plan",
+          "phone support"
         ],
         "weight": 3
       },
       {
-        "description": "Does the answer explain that the cancellation occurred after more than 30 days?",
+        "description": "Does the answer mention that the Personal plan includes email support?",
         "keywords": [
-          "after more than 30 days",
-          "35 days"
-        ],
-        "weight": 3
-      },
-      {
-        "description": "Does the answer correctly state that January 1st to February 5th is 35 days?",
-        "keywords": [
-          "january 1st",
-          "february 5th",
-          "35 days"
+          "personal plan",
+          "email support"
         ],
         "weight": 2
       },
       {
-        "description": "Does the answer mention that prorated refunds are only available within the first 30 days?",
+        "description": "Does the answer specify a 24-hour response time for Personal plan email support?",
         "keywords": [
-          "prorated refunds",
-          "within first 30 days"
-        ],
-        "weight": 2
-      },
-      {
-        "description": "Does the answer clarify that after 30 days, there is no refund?",
-        "keywords": [
-          "after 30 days",
-          "no refund"
-        ],
-        "weight": 2
-      },
-      {
-        "description": "Does the answer state that access continues until the end of the billing period after 30 days?",
-        "keywords": [
-          "access continues",
-          "end of billing period"
+          "24 hours",
+          "email support"
         ],
         "weight": 1
+      },
+      {
+        "description": "Does the answer state that phone support is available for Enterprise plans?",
+        "keywords": [
+          "phone support",
+          "enterprise plans"
+        ],
+        "weight": 2
       }
     ]
   },
   {
-    "question": "How much cheaper is it to pay for the Pro plan annually compared to paying monthly for a year?",
-    "expected": "The Pro plan costs $29/month or $290/year. Paying monthly for a year would cost $29 multiplied by 12 months, totaling $348. The annual plan costs $290. Therefore, paying annually saves you $58 per year ($348 - $290).",
-    "generated_by": "TA2",
+    "question": "Can I use team folders and sync files larger than 10GB with the Pro plan?",
+    "expected": "Yes, the Pro plan supports both team folders with permission controls and the synchronization of large files greater than 10GB.",
+    "generated_by": "TA0",
     "fact_checks": [
       {
-        "description": "The answer explicitly states the monthly cost of the Pro plan is $29.",
+        "description": "Does the answer explicitly state 'Yes' and affirm that the Pro plan supports both requested features?",
         "keywords": [
-          "$29/month",
+          "yes",
+          "pro plan supports both"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "Does the answer confirm that the Pro plan supports team folders with permission controls?",
+        "keywords": [
+          "team folders",
+          "permission controls",
           "pro plan"
         ],
         "weight": 2
       },
       {
-        "description": "The answer explicitly states the annual cost of the Pro plan is $290.",
+        "description": "Does the answer confirm that the Pro plan supports the synchronization of files larger than 10GB?",
         "keywords": [
-          "$290/year",
-          "pro plan"
+          "large files",
+          "10gb",
+          "pro plan",
+          "synchronization"
+        ],
+        "weight": 2
+      }
+    ]
+  },
+  {
+    "question": "Do all CloudSync Pro plans offer unlimited version history?",
+    "expected": "No, not all plans offer unlimited version history. The Personal plan provides 30 days of version history, while Pro and Enterprise plans offer unlimited version history.",
+    "generated_by": "TA0",
+    "fact_checks": [
+      {
+        "description": "The answer states that not all CloudSync Pro plans offer unlimited version history.",
+        "keywords": [
+          "not all plans",
+          "unlimited version history"
+        ],
+        "weight": 3
+      },
+      {
+        "description": "The answer explicitly states that the Personal plan provides 30 days of version history.",
+        "keywords": [
+          "personal plan",
+          "30 days",
+          "version history"
         ],
         "weight": 2
       },
       {
-        "description": "The answer calculates the total cost of paying monthly for a year as $348.",
+        "description": "The answer mentions that Pro and Enterprise plans offer unlimited version history.",
         "keywords": [
-          "$348",
-          "29 multiplied by 12",
-          "monthly for a year"
-        ],
-        "weight": 3
-      },
-      {
-        "description": "The answer states that paying annually saves $58 per year.",
-        "keywords": [
-          "$58",
-          "saves",
-          "per year"
-        ],
-        "weight": 3
-      },
-      {
-        "description": "The calculation ($348 - $290) is shown to derive the savings.",
-        "keywords": [
-          "$348 - $290",
-          "calculation"
+          "pro and enterprise",
+          "unlimited version history"
         ],
         "weight": 2
       }

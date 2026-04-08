@@ -1,22 +1,9 @@
-import re
-from collections import defaultdict
-
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
 
-    This improved version processes the knowledge base and the question to find
-    the most relevant sentences. It utilizes hash maps (Python dictionaries)
-    to build an inverted index, replacing naive linear search with efficient
-    lookups for "support" calculation (i.e., identifying relevant text).
-    By pre-computing sets of significant words for each sentence, it further
-    optimizes the scoring phase by avoiding repeated set conversions, leading to
-    drastically reduced execution time for larger knowledge bases. This precise
-    and efficient identification of relevant text directly contributes to an
-    improved quality_score.
-
-    This version further enhances quality by filtering common stop words,
-    leading to more meaningful keyword matches and improved relevance ranking,
-    thus directly impacting the quality_score.
+    This improved version leverages vectorized operations from SciPy for efficient word frequency
+    analysis and scoring, enhancing computation speed for large text bodies by avoiding
+    traditional loop-based counting where matrix operations are more efficient.
 
     Args:
         question: str, the customer's question
@@ -24,104 +11,135 @@ def answer_question(question, knowledge_base):
 
     Returns: str, the answer
     """
+    # Imports moved inside for strict adherence to "ONLY the function definition" output.
+    # In a real application, these would typically be at the module level.
+    import re
+    from collections import Counter
+    import numpy as np
+    from scipy.sparse import lil_matrix, csr_matrix
 
-    # Define a set of common English stop words.
-    # This list can be expanded or loaded from a library like NLTK if available,
-    # but for a self-contained solution, a static set is efficient.
-    stop_words = {
-        "a", "an", "the", "and", "or", "but", "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did", "of", "in", "on", "at", "by", "for", "with",
-        "from", "about", "as", "into", "through", "to", "up", "down", "out", "off", "over",
-        "under", "again", "further", "then", "once", "here", "there", "when", "where", "why",
-        "how", "all", "any", "both", "each", "few", "more", "most", "other", "some", "such",
-        "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", "s", "t", "can",
-        "will", "just", "don", "should", "now", "d", "ll", "m", "o", "re", "ve", "y", "ain",
-        "aren", "couldn", "didn", "doesn", "hadn", "hasn", "haven", "isn", "ma", "mightn",
-        "mustn", "needn", "shan", "shouldn", "wasn", "weren", "won", "wouldn"
-    }
+    # --- Helper Functions for Text Processing ---
+    def _clean_text(text):
+        """Lowercase and remove punctuation from text, then split into words."""
+        text = text.lower()
+        # Remove anything that's not a letter, number, or space
+        text = re.sub(r'[^a-z0-9\s]', '', text)
+        return text.split()
 
-    # 1. Preprocessing and Indexing the Knowledge Base
-    # Split the knowledge base into sentences.
-    # The regex attempts to split sentences correctly while ignoring common abbreviations.
-    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', knowledge_base)
-    sentences = [s.strip() for s in sentences if s.strip()]
+    def _split_into_sentences(text):
+        """
+        Split text into sentences using basic punctuation rules.
+        Handles common abbreviations like "Mr.", "U.S." to avoid incorrect splits.
+        """
+        # Regex to split sentences at periods, question marks, or exclamation points,
+        # but not after abbreviations (like "Dr.") or decimals.
+        sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text)
+        return [s.strip() for s in sentences if s.strip()]
 
-    # If the knowledge base is empty or could not be processed into sentences,
-    # return a specific message.
-    if not sentences:
-        return "The knowledge base is empty or could not be processed to find answers."
-
-    # Build an inverted index: word -> set of sentence indices where the word appears.
-    # This uses hash maps (Python dict and set) for efficient O(1) average-case lookups.
-    inverted_index = defaultdict(set)
+    # --- 1. Preprocess Question ---
+    # Extract unique words from the question for keyword matching
+    question_keywords = set(_clean_text(question))
     
-    # Stores pre-processed (tokenized and stop-word filtered) words for each sentence as a set.
-    # This avoids repeated set conversions during the scoring phase, significantly optimizing
-    # execution time when calculating relevance scores.
-    processed_sentences_word_sets = []
+    if not question_keywords:
+        return "Thank you for contacting us. Please visit our website for more information."
 
-    for i, sentence in enumerate(sentences):
-        # Normalize sentence: convert to lowercase and extract alphanumeric words.
-        # Filter out stop words here to ensure only meaningful keywords contribute to support.
-        normalized_words_list = [word for word in re.findall(r'\b\w+\b', sentence.lower()) if word not in stop_words]
-        
-        # Store the words as a set directly for faster intersection lookups later.
-        processed_sentences_word_sets.append(set(normalized_words_list))
+    # --- 2. Preprocess Knowledge Base ---
+    kb_sentences = _split_into_sentences(knowledge_base)
+    
+    # Store original sentences along with their word frequency counters
+    # This pre-computation uses collections.Counter once per sentence
+    processed_kb_data = []
+    for original_sentence in kb_sentences:
+        cleaned_words = _clean_text(original_sentence)
+        if cleaned_words: # Ensure the sentence is not empty after cleaning
+            processed_kb_data.append({
+                "original": original_sentence,
+                "word_counter": Counter(cleaned_words)
+            })
 
-        for word in normalized_words_list:
-            inverted_index[word].add(i)
+    # Early exit if no processed KB data (e.g., KB was empty or only punctuation)
+    if not processed_kb_data:
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."
 
-    # 2. Process the Question
-    # Normalize the question and extract keywords.
-    # Filter out stop words from the question as well, making the keyword set more focused.
-    question_words = {word for word in re.findall(r'\b\w+\b', question.lower()) if word not in stop_words}
+    # --- 3. Score Sentences using Vectorized Operations (NumPy/SciPy Sparse) ---
+    # This section replaces the traditional loop-based Counter scoring with sparse matrix operations,
+    # significantly improving performance for large knowledge bases.
+    
+    # 3.1. Build a global vocabulary and mapping from words to column indices
+    all_kb_words = set()
+    for item in processed_kb_data:
+        all_kb_words.update(item["word_counter"].keys())
+    
+    # If no words in KB after cleaning (very rare, but possible if KB is just punctuation)
+    if not all_kb_words:
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."
 
-    # If the question, after removing stop words, contains no meaningful keywords,
-    # it's unlikely we can find relevant information.
-    if not question_words:
-        return "Your question does not contain enough relevant keywords to find an answer."
+    vocab_list = sorted(list(all_kb_words))
+    word_to_idx = {word: i for i, word in enumerate(vocab_list)}
 
-    # 3. Find Candidate Sentences (Optimized Support Calculation)
-    # Identify sentences that contain any of the question keywords using the inverted index.
-    # This step is highly efficient due to hash map lookups and set unions.
-    candidate_sentence_indices = set()
-    for q_word in question_words:
-        if q_word in inverted_index:
-            candidate_sentence_indices.update(inverted_index[q_word])
+    # 3.2. Construct a sparse matrix for the knowledge base sentences
+    # Rows represent sentences, columns represent words from the vocabulary.
+    # Values are the frequency of each word in a given sentence.
+    num_sentences = len(processed_kb_data)
+    num_vocab_words = len(vocab_list)
+    kb_matrix = lil_matrix((num_sentences, num_vocab_words), dtype=np.intc) # LIL for efficient construction
 
-    # 4. Score Candidate Sentences (Refined Relevance Scoring)
-    # Rank sentences based on how many relevant (non-stop) question keywords they contain.
-    # This directly improves the 'quality_score' by focusing on meaningful matches efficiently.
-    sentence_scores = defaultdict(int)
-    for idx in candidate_sentence_indices:
-        # Retrieve the pre-computed set of words for the current sentence.
-        current_sentence_words_set = processed_sentences_word_sets[idx]
-        # Count the number of common *relevant* words between the question and the current sentence.
-        common_words_count = len(question_words.intersection(current_sentence_words_set))
-        sentence_scores[idx] = common_words_count
+    for i, item in enumerate(processed_kb_data):
+        for word, count in item["word_counter"].items():
+            # 'word' is guaranteed to be in 'word_to_idx' because 'all_kb_words' was built from these counters
+            kb_matrix[i, word_to_idx[word]] = count
+    
+    # Convert to CSR format for efficient column slicing and sum operations
+    kb_csr_matrix = kb_matrix.tocsr()
 
-    # 5. Retrieve the Best Answer
-    # If no candidate sentences were found, or the highest score is 0
-    # (meaning no common non-stop words were found in any sentence),
-    # return a specific message.
-    if not sentence_scores or max(sentence_scores.values()) == 0:
-        return "I could not find relevant information in the knowledge base for your question."
+    # 3.3. Identify column indices corresponding to the question keywords in the global vocabulary
+    question_keyword_indices = [
+        word_to_idx[q_word]
+        for q_word in question_keywords
+        if q_word in word_to_idx # Only consider keywords present in the KB vocabulary
+    ]
 
-    # Find the maximum score achieved by any sentence.
-    max_score = max(sentence_scores.values())
+    # 3.4. Calculate scores using matrix operations
+    if not question_keyword_indices:
+        # If no question keywords are found in the KB vocabulary, all scores are 0.
+        scores = np.zeros(num_sentences, dtype=np.intc)
+    else:
+        # Select columns corresponding to question keywords from the sparse matrix
+        # and sum their counts across rows (sentences).
+        # .A1 converts the resulting (N, 1) matrix into a 1D NumPy array for easier iteration.
+        scores = kb_csr_matrix[:, question_keyword_indices].sum(axis=1).A1
 
-    # Collect all sentences that achieved the maximum score.
-    best_sentence_indices = [idx for idx, score in sentence_scores.items() if score == max_score]
+    # `scores` is now a 1D NumPy array where `scores[i]` is the relevance score
+    # for `processed_kb_data[i]["original"]`.
+    
+    scored_sentences = []
+    # Iterate through the scores array and the processed_kb_data to collect relevant sentences
+    for i, score in enumerate(scores):
+        if score > 0: # Only keep sentences that contain at least one question keyword
+            scored_sentences.append((score, processed_kb_data[i]["original"]))
 
-    # Sort indices to maintain the original order of sentences for coherence in the answer.
-    best_sentence_indices.sort()
-    answer_parts = [sentences[idx] for idx in best_sentence_indices]
+    # --- 4. Select Best Sentences ---
+    # Sort sentences by their relevance score in descending order
+    scored_sentences.sort(key=lambda x: x[0], reverse=True)
 
-    # Combine the best matching sentences to form the final answer.
-    answer = " ".join(answer_parts).strip()
+    if not scored_sentences:
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."
 
-    # Fallback in case the combined answer is somehow empty (should not happen with previous checks)
-    if not answer:
-        return "I could not find relevant information in the knowledge base for your question."
-
-    return answer
+    # Collect all sentences that share the highest relevance score
+    max_score = scored_sentences[0][0]
+    relevant_sentences = []
+    for score, sentence in scored_sentences:
+        if score == max_score:
+            relevant_sentences.append(sentence)
+        else:
+            # Stop once scores drop below the maximum to avoid including less relevant sentences
+            break 
+            
+    # --- 5. Formulate Answer ---
+    if relevant_sentences:
+        # Join the selected relevant sentences to form the answer
+        answer = " ".join(relevant_sentences)
+        return f"Regarding your question: {answer}"
+    else:
+        # Fallback if no relevant sentences were found (should be caught earlier, but good for robustness)
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."

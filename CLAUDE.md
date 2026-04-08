@@ -75,9 +75,13 @@ The Feedback Loop. Adds a reviewer agent with structured feedback. Worker propos
 
 The HyperAgent Loop. True code-rewriting self-improvement. Meta-agent rewrites its own source code (task_agent.py, meta_agent.py) with 3-stage crash recovery (compile, import, signature). Generational versioning in generations/ folders. Inspired by Meta's DGM-H (HyperAgents, arxiv 2603.19461), simplified without Docker.
 
-### Level 4 -- arena-loop/
+### Level 4a -- arena-loop/ (single agent)
 
-The Arena Loop. Adversarial co-evolution with self-modifying agents. Code agents are mini-HyperAgents that can mutate their own propose() method. Test agents write harder tests. Tournament selection evolves strategies. Resume is fully supported via serialize/deserialize. See CONCEPT.md.
+Arena Single. Pure adversarial co-evolution: 1 code agent vs 1 test agent, no tournament selection. Isolates the adversarial mechanism from population dynamics. Run with `--code 1 --test 1 --label single`.
+
+### Level 4b -- arena-loop/ (4 agents)
+
+Arena Loop. Adversarial co-evolution with self-modifying agents and tournament selection. Code agents are mini-HyperAgents that can mutate their own propose() method. Test agents write harder tests. Tournament selection evolves strategies. Resume is fully supported via serialize/deserialize. See CONCEPT.md.
 
 ---
 

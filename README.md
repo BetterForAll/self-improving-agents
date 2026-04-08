@@ -41,16 +41,16 @@ and proposing new ones.
 ## Key Findings
 
 - **Fixed benchmarks create false confidence** -- Levels 1-3 scored 90-100%
-  on email validation's original tests, but dropped to 58-62% on Arena Loop's
-  adversarial suite. Arena Loop held at 84%. The solutions that looked
+  on email validation's original tests, but dropped to 62-66% on Arena Loop's
+  adversarial suite. Arena Loop held at 70%. The solutions that looked
   perfect were brittle.
 - **Feedback Loop is the best cost-performance tradeoff** -- wins snake
-  (31.1 vs Arena's 29.2), ties Arena on support (74.67 vs 70.67, within
+  (31.1 vs Arena's 29.2), ties Arena on support (72.86 vs 69.86, within
   noise), but costs 20x less ($0.03 vs $0.63 per task)
 - **Arena Loop builds robustness** -- scored 78.16 on support against 28
   adversarial questions (vs 10 original), climbing every round as the
-  test suite grew. On the same 10 questions, Feedback Loop (74.67) and
-  Arena Loop (70.67) are within scoring noise of each other.
+  test suite grew. On the same 10 questions, Feedback Loop (72.86) and
+  Arena Loop (69.86) are within scoring noise of each other.
 - **Each level has its sweet spot** -- simple tasks need simple agents (Level 1),
   quality tasks need structured feedback (Level 2), and robustness against
   unseen edge cases needs adversarial testing (Level 4)

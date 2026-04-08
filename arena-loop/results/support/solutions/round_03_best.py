@@ -1,7 +1,12 @@
 import re
+from collections import Counter
 
 def answer_question(question, knowledge_base):
     """Answer a customer question using the knowledge base.
+
+    This improved version leverages collections.Counter for efficient word frequency
+    analysis to identify relevant parts of the knowledge base, enhancing both
+    answer quality and computation speed for large text bodies.
 
     Args:
         question: str, the customer's question
@@ -10,81 +15,85 @@ def answer_question(question, knowledge_base):
     Returns: str, the answer
     """
 
-    # Strategy: Use generators for intermediate data processing steps
-    # to avoid building large lists in memory, which is crucial for
-    # handling potentially large knowledge bases, thus improving quality_score.
+    # --- Helper Functions for Text Processing ---
+    def _clean_text(text):
+        """Lowercase and remove punctuation from text, then split into words."""
+        text = text.lower()
+        # Remove anything that's not a letter, number, or space
+        text = re.sub(r'[^a-z0-9\s]', '', text)
+        return text.split()
 
-    # 1. Generator to chunk the knowledge base into sentences.
-    #    This avoids creating a full list of all sentences in memory.
-    def chunk_knowledge_base(kb_text):
-        # A basic sentence splitter. In a more sophisticated system,
-        # one might use an NLP library (e.g., NLTK, spaCy) for better accuracy.
-        # This regex splits by common sentence terminators followed by whitespace,
-        # keeping the terminator with the sentence.
-        sentences = re.split(r'(?<=[.!?])\s+', kb_text.strip())
-        for sentence in sentences:
-            if sentence.strip():
-                yield sentence.strip()
+    def _split_into_sentences(text):
+        """
+        Split text into sentences using basic punctuation rules.
+        Handles common abbreviations like "Mr.", "U.S." to avoid incorrect splits.
+        """
+        # Regex to split sentences at periods, question marks, or exclamation points,
+        # but not after abbreviations (like "Dr.") or decimals.
+        sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text)
+        return [s.strip() for s in sentences if s.strip()]
 
-    # 2. Generator to filter relevant chunks based on question keywords.
-    #    This processes chunks from the `chunk_knowledge_base` generator
-    #    on-the-fly, yielding only relevant ones without storing all chunks
-    #    or all relevant chunks in a temporary list.
-    def find_relevant_chunks(chunks_generator, keywords):
-        for chunk in chunks_generator:
-            # Convert chunk to lowercase once for efficiency when checking multiple keywords.
-            lower_chunk = chunk.lower()
-            # Simple keyword matching for relevance (case-insensitive)
-            if any(keyword in lower_chunk for keyword in keywords):
-                yield chunk
-
-    # Pre-process the question to extract keywords for matching.
-    # We use a set for efficient lookup and filter out very short words
-    # that are unlikely to be meaningful keywords.
-    # Also, include a basic set of common English stop words to improve relevance
-    # by excluding words that don't carry much meaning.
-    STOP_WORDS = {
-        "a", "an", "the", "is", "are", "was", "were", "of", "in", "on", "for",
-        "with", "and", "or", "but", "how", "what", "where", "when", "why",
-        "who", "whom", "this", "that", "these", "those", "it", "its", "he",
-        "she", "they", "them", "their", "our", "we", "you", "your", "i", "me",
-        "my", "be", "been", "am", "do", "does", "did", "not", "no", "yes",
-        "from", "at", "by", "to", "as", "about", "above", "before", "after",
-        "below", "between", "down", "up", "out", "off", "over", "under",
-        "again", "further", "then", "once", "here", "there", "all", "any",
-        "both", "each", "few", "more", "most", "other", "some", "such",
-        "nor", "only", "own", "same", "so", "than", "too", "very", "s", "t",
-        "can", "will", "just", "don", "should", "now"
-    }
-
-    question_keywords = set(word for word in re.findall(r'\b\w+\b', question.lower())
-                            if len(word) > 2 and word not in STOP_WORDS)
-
-    # If no meaningful keywords are extracted from the question,
-    # we cannot perform an effective search.
+    # --- 1. Preprocess Question ---
+    # Extract unique words from the question for keyword matching
+    question_keywords = set(_clean_text(question))
+    
     if not question_keywords:
-        return "I couldn't understand your question. Please provide more specific details."
+        return "Thank you for contacting us. Please visit our website for more information."
 
-    # Pipeline the generators:
-    # First, get a generator for knowledge base chunks.
-    kb_chunks_gen = chunk_knowledge_base(knowledge_base)
-    # Then, get a generator for relevant chunks from the kb_chunks_gen, using question keywords.
-    relevant_chunks_gen = find_relevant_chunks(kb_chunks_gen, question_keywords)
+    # --- 2. Preprocess Knowledge Base ---
+    kb_sentences = _split_into_sentences(knowledge_base)
+    
+    # Store original sentences along with their word frequency counters
+    # This pre-computation uses collections.Counter once per sentence
+    processed_kb_data = []
+    for original_sentence in kb_sentences:
+        cleaned_words = _clean_text(original_sentence)
+        if cleaned_words: # Ensure the sentence is not empty after cleaning
+            processed_kb_data.append({
+                "original": original_sentence,
+                "word_counter": Counter(cleaned_words)
+            })
 
-    # Collect a limited number of relevant chunks to form the answer.
-    # We limit the collection to prevent excessively long answers and
-    # to manage memory if many chunks are relevant (though the generators
-    # already prevent storing all initially).
-    max_relevant_chunks_to_collect = 5
-    collected_answers = []
-    for i, chunk in enumerate(relevant_chunks_gen):
-        if i >= max_relevant_chunks_to_collect:
-            break
-        collected_answers.append(chunk)
+    # --- 3. Score Sentences using collections.Counter ---
+    # Calculate a relevance score for each sentence in the knowledge base
+    # by summing the frequencies of question keywords found within it.
+    scored_sentences = []
+    for item in processed_kb_data:
+        score = 0
+        sentence_word_counter = item["word_counter"]
+        
+        # Efficiently sum up the counts of question keywords using Counter's fast lookup.
+        # If a keyword is not in the sentence, Counter[keyword] returns 0.
+        for q_word in question_keywords:
+            score += sentence_word_counter[q_word]
 
-    if collected_answers:
-        # Join the collected relevant chunks to form the final answer.
-        return " ".join(collected_answers)
+        if score > 0: # Only keep sentences that contain at least one question keyword
+            scored_sentences.append((score, item["original"]))
+
+    # --- 4. Select Best Sentences ---
+    # Sort sentences by their relevance score in descending order
+    scored_sentences.sort(key=lambda x: x[0], reverse=True)
+
+    if not scored_sentences:
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."
+
+    # Collect all sentences that share the highest relevance score
+    max_score = scored_sentences[0][0]
+    relevant_sentences = []
+    for score, sentence in scored_sentences:
+        if score == max_score:
+            relevant_sentences.append(sentence)
+        else:
+            # Optionally, one could include a few more top-scoring sentences
+            # even if their score is slightly lower than max_score, up to a limit.
+            # For simplicity, we stick to only sentences with the absolute max score here.
+            break 
+            
+    # --- 5. Formulate Answer ---
+    if relevant_sentences:
+        # Join the selected relevant sentences to form the answer
+        answer = " ".join(relevant_sentences)
+        return f"Regarding your question: {answer}"
     else:
-        # Fallback response if no relevant information is found.
-        return "I apologize, but I couldn't find specific information related to your question in our knowledge base. Please try rephrasing your question or visit our website for more details."
+        # Fallback if no relevant sentences were found (should be caught earlier, but good for robustness)
+        return "Thank you for contacting us. We could not find specific information related to your question in our knowledge base. Please visit our website for more information."
