@@ -8,9 +8,13 @@ and proposing new ones.
 
 ## Results
 
-| Snake Game AI | Email Validation | Customer Support |
-|:---:|:---:|:---:|
-| ![Snake](assets/chart_snake.png) | ![Email](assets/chart_email_validation.png) | ![Support](assets/chart_support.png) |
+| Snake Game AI | Email Validation |
+|:---:|:---:|
+| ![Snake](assets/chart_snake.png) | ![Email](assets/chart_email_validation.png) |
+
+| Customer Support |
+|:---:|
+| ![Support](assets/chart_support.png) |
 
 ---
 
