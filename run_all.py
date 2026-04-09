@@ -10,8 +10,10 @@ Options:
     python run_all.py --tasks snake support          # specific tasks only
     python run_all.py --levels autoresearch hyperagent  # specific levels only
     python run_all.py --skip-analysis                # skip the final LLM analysis step
+    python run_all.py --skip-cross-validation        # skip cross-validation
     python run_all.py --fresh                        # ignore previous results, start clean
     python run_all.py --sequential                   # run one at a time (less API pressure)
+    python run_all.py --scale 2                      # 2x iterations/rounds (for deeper runs)
 """
 
 import argparse
@@ -103,10 +105,22 @@ def collect_experiment_result(level_key, task):
     }
 
 
-def build_cmd(level_info, task, fresh, run_id):
+def scale_args(default_args, scale):
+    """Apply scale multiplier to numeric args (--iters, --gens, --rounds)."""
+    if scale == 1.0:
+        return list(default_args)
+    scaled = list(default_args)
+    scalable = {"--iters", "--gens", "--rounds"}
+    for i, arg in enumerate(scaled):
+        if arg in scalable and i + 1 < len(scaled):
+            scaled[i + 1] = str(max(1, int(int(scaled[i + 1]) * scale)))
+    return scaled
+
+
+def build_cmd(level_info, task, fresh, run_id, scale=1.0):
     cmd = (
         [sys.executable, level_info["script"], "--task", task]
-        + level_info["default_args"]
+        + scale_args(level_info["default_args"], scale)
         + ["--run-id", run_id]
     )
     if fresh:
@@ -114,7 +128,7 @@ def build_cmd(level_info, task, fresh, run_id):
     return cmd
 
 
-def run_sequential(jobs, fresh, run_id):
+def run_sequential(jobs, fresh, run_id, scale=1.0):
     """Run experiments one at a time."""
     results = []
     for level_key, level_info, task in jobs:
@@ -122,7 +136,7 @@ def run_sequential(jobs, fresh, run_id):
         print(f"  {level_info['name']} -- {task}")
         print(f"{'=' * 70}\n")
 
-        cmd = build_cmd(level_info, task, fresh, run_id)
+        cmd = build_cmd(level_info, task, fresh, run_id, scale)
         start = time.time()
         result = subprocess.run(cmd, cwd=DIR)
         elapsed = time.time() - start
@@ -134,7 +148,7 @@ def run_sequential(jobs, fresh, run_id):
     return results
 
 
-def run_parallel(jobs, fresh, run_id):
+def run_parallel(jobs, fresh, run_id, scale=1.0):
     """Run all experiments in parallel, report as they finish."""
     # Create log directory for each experiment's output
     log_dir = os.path.join(RESULTS_DIR, "logs")
@@ -142,7 +156,7 @@ def run_parallel(jobs, fresh, run_id):
 
     processes = []
     for level_key, level_info, task in jobs:
-        cmd = build_cmd(level_info, task, fresh, run_id)
+        cmd = build_cmd(level_info, task, fresh, run_id, scale)
         print(f"  Starting: {level_info['name']} / {task}")
         # Write each experiment's output to a log file (not a pipe)
         # This avoids pipe buffer deadlock when experiments print a lot
@@ -183,10 +197,14 @@ def main():
                         help=f"Levels to run (default: {' '.join(LEVELS.keys())})")
     parser.add_argument("--skip-analysis", action="store_true",
                         help="Skip the final analysis step")
+    parser.add_argument("--skip-cross-validation", action="store_true",
+                        help="Skip the cross-validation step")
     parser.add_argument("--fresh", action="store_true",
                         help="Ignore previous results, start clean")
     parser.add_argument("--sequential", action="store_true",
                         help="Run experiments one at a time (default: parallel)")
+    parser.add_argument("--scale", type=float, default=1.0,
+                        help="Multiply default iterations/rounds (e.g. --scale 2 for 2x)")
     args = parser.parse_args()
 
     run_id = "run_" + time.strftime("%Y%m%d_%H%M%S")
@@ -202,6 +220,7 @@ def main():
         print(f"  Levels: {', '.join(args.levels)}")
         print(f"  Tasks:  {', '.join(args.tasks)}")
         print(f"  Mode:   {'sequential' if args.sequential else 'parallel'}")
+        print(f"  Scale:  {args.scale}x")
         print(f"  Fresh:  {args.fresh}")
         print()
 
@@ -232,9 +251,9 @@ def main():
         total_start = time.time()
 
         if args.sequential:
-            results = run_sequential(jobs, args.fresh, run_id)
+            results = run_sequential(jobs, args.fresh, run_id, args.scale)
         else:
-            results = run_parallel(jobs, args.fresh, run_id)
+            results = run_parallel(jobs, args.fresh, run_id, args.scale)
 
         total_elapsed = time.time() - total_start
         completed_at = time.strftime("%Y-%m-%d %H:%M:%S")
@@ -276,17 +295,34 @@ def main():
         print(f"\n  Registry updated: {REGISTRY_FILE}")
 
         # Run cross-validation (scores all levels with same judge for fair comparison)
-        if not args.skip_analysis:
-            print(f"\n{'=' * 70}")
-            print(f"  Running cross-validation...")
-            print(f"{'=' * 70}\n")
-            cross_val_script = os.path.join(DIR, "arena-loop", "cross_validate.py")
-            result = subprocess.run(
-                [sys.executable, cross_val_script, "--task", "all"],
-                cwd=os.path.join(DIR, "arena-loop"),
-            )
-            if result.returncode != 0:
-                print(f"\n  Cross-validation failed (exit code {result.returncode})")
+        if not args.skip_analysis and not args.skip_cross_validation:
+            cross_val_tasks = args.tasks
+            task_arg = "all" if set(cross_val_tasks) == set(ALL_TASKS) else None
+            if task_arg:
+                # Run once with --task all
+                print(f"\n{'=' * 70}")
+                print(f"  Running cross-validation (all tasks)...")
+                print(f"{'=' * 70}\n")
+                cross_val_script = os.path.join(DIR, "arena-loop", "cross_validate.py")
+                result = subprocess.run(
+                    [sys.executable, cross_val_script, "--task", "all"],
+                    cwd=os.path.join(DIR, "arena-loop"),
+                )
+                if result.returncode != 0:
+                    print(f"\n  Cross-validation failed (exit code {result.returncode})")
+            else:
+                # Run per-task
+                cross_val_script = os.path.join(DIR, "arena-loop", "cross_validate.py")
+                for task in cross_val_tasks:
+                    print(f"\n{'=' * 70}")
+                    print(f"  Running cross-validation ({task})...")
+                    print(f"{'=' * 70}\n")
+                    result = subprocess.run(
+                        [sys.executable, cross_val_script, "--task", task],
+                        cwd=os.path.join(DIR, "arena-loop"),
+                    )
+                    if result.returncode != 0:
+                        print(f"\n  Cross-validation for {task} failed (exit code {result.returncode})")
 
         # Run analysis
         if not args.skip_analysis:
